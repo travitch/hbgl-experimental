@@ -22,7 +22,9 @@ library
   ghc-prof-options: -auto-all
   exposed-modules: Data.Graph.Interface,
                    Data.Graph.PatriciaTree,
-                   Data.Graph.LinkStorage
+                   Data.Graph.LinkStorage,
+                   Data.Graph.Algorithms.Basic,
+                   Data.Graph.Algorithms.DFS
   -- other-modules:
   -- build-depends:
 
