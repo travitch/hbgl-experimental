@@ -1,5 +1,4 @@
-{-# LANGUAGE RankNTypes, TypeFamilies, FlexibleInstances, UndecidableInstances, FlexibleContexts #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies, FlexibleInstances, UndecidableInstances, FlexibleContexts #-}
 module Data.Graph.Interface (
   Graph(..),
   LNode(..),
@@ -71,8 +70,10 @@ class Graph gr where
   type NodeLabel gr
   type EdgeLabel gr
   mkGraph :: [LNode gr] -> [LEdge gr] -> gr
-  empty :: gr
   isEmpty :: gr -> Bool
+
+  empty :: gr
+  empty = mkGraph [] []
 
 class (Graph gr, Eq (Node gr)) => InspectableGraph gr where
   context :: gr -> Node gr -> Maybe (Context gr)
@@ -117,9 +118,10 @@ class (IncidenceGraph gr) => BidirectionalGraph gr where
   degree g n = outDeg g n + inDeg g n
 
 -- | Graphs with efficient access to successor nodes.  Minimum
--- required implementation: 'lsuc'
+-- required implementation: 'lsuc' or 'suc'
 class (InspectableGraph gr) => AdjacencyGraph gr where
   suc :: gr -> Node gr -> [Node gr]
+  suc g = map unlabelNode . lsuc g
 
   -- | Suggested complexity: log(N)
   lsuc :: gr -> Node gr -> [LNode gr]
@@ -130,9 +132,10 @@ class (InspectableGraph gr) => AdjacencyGraph gr where
         Just (Context _ ln _) -> ln
 
 -- | Graphs with efficient access to predecessor nodes.  Minimum required
--- implementation: 'lpre'.
-class (AdjacencyGraph gr, BidirectionalGraph gr) => BidirectionalAdjacencyGraph gr where
+-- implementation: 'lpre' or 'pre'.
+class (AdjacencyGraph gr) => BidirectionalAdjacencyGraph gr where
   pre :: gr -> Node gr -> [Node gr]
+  pre g = map unlabelNode . lpre g
 
   lpre :: gr -> Node gr -> [LNode gr]
   lpre g n = map (addLabel g) (pre g n)
@@ -243,7 +246,6 @@ class (DecomposableGraph gr, (Eq (EdgeLabel gr))) => MutableGraph gr where
         case gelem dst g' of
           False -> error "insEdge: destination is not in graph"
           True -> (Context p ln ((dst, lbl) : s)) & g'
-          -- True -> (Context p ln (linkInsert dst lbl s)) & g'
 
   -- | Delete a node from the graph.  It is an error if the node
   -- does not exist in the graph.
@@ -326,7 +328,6 @@ emap :: (Node gr1 ~ Node gr2, NodeLabel gr1 ~ NodeLabel gr2,
         -> gr2
 emap f = gmap (\(Context p (LNode v l) s) -> Context (adjMap f p) (LNode v l) (adjMap f s))
   where
-    -- adjMap g = linkLabelMap (\_ lbl -> g lbl)
     adjMap g = map (\(v, l) -> (v, g l))
 
 
