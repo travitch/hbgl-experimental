@@ -39,7 +39,8 @@ module Data.Graph.Algorithms.DFS (
 
 import Data.Map ( Map, (!) )
 import qualified Data.Map as M
-import qualified Data.Set as S
+import Data.HashSet ( HashSet )
+import qualified Data.HashSet as S
 import Data.Tree
 import Data.Graph.Interface
 import Data.Graph.Algorithms.Basic
@@ -204,7 +205,7 @@ reachable v g = preorderF (dff [v] g)
 
 -- | Create the condensation of the graph.  There is only a single
 -- (unlabeled) edge between strongly-connected components.
-condense :: (DecomposableGraph gr1, VertexListGraph gr1, BidirectionalGraph gr1,
+condense :: (DecomposableGraph gr1, AdjacencyGraph gr1, VertexListGraph gr1, BidirectionalGraph gr1,
              Graph gr2, Node gr2 ~ Int, Ord (Node gr1),
              EdgeLabel gr2 ~ (), NodeLabel gr2 ~ [LNode gr1])
             => gr1 -> gr2
@@ -212,7 +213,7 @@ condense g = mkGraph condensedNodes condensedEdges
   where
     sccIds = zip [0..] (scc g)
     nodeToSccMap = foldr buildSccIdMap M.empty sccIds
-    sccEdgePairs = foldr (collectSccEdges nodeToSccMap) S.empty sccIds
+    sccEdgePairs = foldr (collectSccEdges g nodeToSccMap) S.empty sccIds
     condensedNodes = map (sccToNode g) sccIds
     condensedEdges = map (\(s, d) -> LEdge (Edge s d) ()) (S.toList sccEdgePairs)
 
@@ -223,8 +224,19 @@ buildSccIdMap (componentId, componentNodes) acc =
 -- Find all of the successors to n in the graph.  For each successor s
 -- not in the current scc, add the pair (sccId, nodeToSccMap ! s) to
 -- the set.
-collectSccEdges nodeToSccMap (sccId, ns) =
-  foldr (\n a -> S.insert
+collectSccEdges :: (AdjacencyGraph gr, Ord (Node gr))
+                   => gr
+                   -> Map (Node gr) Int
+                   -> (Int, [Node gr])
+                   -> HashSet (Int, Int)
+                   -> HashSet (Int, Int)
+collectSccEdges g nodeToSccMap (sccId, ns) acc =
+  foldr addEdges acc ns
+  where
+    addEdges n a =
+      -- Successors to n in g that are not in the same SCC
+      let origSuccs = filter ((/=sccId) . (nodeToSccMap!)) $ suc g n
+      in foldr (\origSuc s -> S.insert (sccId, nodeToSccMap ! origSuc) s) a origSuccs
 
 sccToNode :: (NodeLabel gr2 ~ [LNode gr1], InspectableGraph gr1)
              => gr1 -> (Node gr2, [Node gr1]) -> LNode gr2
