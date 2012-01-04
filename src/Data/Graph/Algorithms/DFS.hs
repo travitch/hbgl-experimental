@@ -183,7 +183,8 @@ postflatten (Node v ts) = postflattenF ts ++ [v]
 postflattenF :: [Tree a] -> [a]
 postflattenF = concatMap postflatten
 
--- | Topologically sort the nodes in the graph (the graph should be a DAG)
+-- | Topologically sort the nodes in the graph (the graph should be a DAG).
+-- The leaves appear at the beginning of the result list.
 topsort :: (DecomposableGraph gr, VertexListGraph gr, BidirectionalGraph gr)
               => gr -> [Node gr]
 topsort = reverse . postflattenF . dff'
