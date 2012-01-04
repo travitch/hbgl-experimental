@@ -48,6 +48,9 @@ instance (Hashable n, Hashable l, Eq n, Eq l) => LinkStorage HashSetPair n l whe
   linkDeleteAll n = HSP . HS.filter ((/=n) . fst) . unHSP
   linkDelete n l = HSP . HS.filter (/=(n,l)) . unHSP
 
+instance (Show n, Show l) => Show (HashSetPair n l) where
+  show (HSP hs) = show hs
+
 newtype SetPair a b = SP { unSP :: S.Set (a, b) }
                     deriving (Eq)
 instance (Ord n, Ord l, Eq n, Eq l) => LinkStorage SetPair n l where

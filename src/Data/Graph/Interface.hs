@@ -56,6 +56,8 @@ data Edge gr = Edge { edgeSource :: Node gr
                     }
 instance (Eq (Node gr)) => Eq (Edge gr) where
   (Edge s1 d1) == (Edge s2 d2) = s1 == s2 && d1 == d2
+instance (Show (Node gr)) => Show (Edge gr) where
+  show (Edge s d) = "Edge " ++ show s ++ " " ++ show d
 
 type Adj gr = [(Node gr, EdgeLabel gr)]
 
@@ -242,10 +244,7 @@ class (DecomposableGraph gr, (Eq (EdgeLabel gr))) => MutableGraph gr where
   insEdge (LEdge (Edge src dst) lbl) g =
     case match src g of
       Nothing -> error "insEdge: source is not in graph"
-      Just ((Context p ln s), g') ->
-        case gelem dst g' of
-          False -> error "insEdge: destination is not in graph"
-          True -> (Context p ln ((dst, lbl) : s)) & g'
+      Just (Context p ln s, g') -> Context p ln ((dst, lbl) : s) & g'
 
   -- | Delete a node from the graph.  It is an error if the node
   -- does not exist in the graph.

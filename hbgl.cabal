@@ -35,3 +35,17 @@ executable TrivialGraphTest
   ghc-options: -Wall
   ghc-prof-options: -auto-all
   main-is: Trivial.hs
+
+test-suite PatriciaTests
+  default-language: Haskell2010
+  type: exitcode-stdio-1.0
+  main-is: PatriciaTests.hs
+  hs-source-dirs: tests
+  ghc-options: -Wall
+  build-depends: base > 3 && < 5,
+                 containers,
+                 hbgl,
+                 HUnit, QuickCheck > 2.4,
+                 test-framework,
+                 test-framework-hunit,
+                 test-framework-quickcheck2

@@ -44,6 +44,7 @@ type LHMGraph = Gr LHMap
 -- | A graph that stores edges using a strict hashmap
 type SHMGraph = Gr SHMap
 
+
 -- If we instantiate Gr with a HashSet for storage, the edge sets have
 -- canonical forms and we can have a relatively cheap graph equality
 -- check.
