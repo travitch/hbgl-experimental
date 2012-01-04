@@ -38,26 +38,46 @@ module Data.Graph.Interface (
   ) where
 
 import qualified Data.Foldable as F
+import Data.Hashable
 
+-- | A labeled node in a graph
 data LNode gr = LNode { unlabelNode :: Node gr,
                         nodeLabel :: NodeLabel gr
                       }
 instance (Eq (Node gr), Eq (NodeLabel gr)) => Eq (LNode gr) where
   (LNode n1 l1) == (LNode n2 l2) = n1 == n2 && l1 == l2
+instance (Ord (Node gr), Ord (NodeLabel gr)) => Ord (LNode gr) where
+  compare (LNode n1 l1) (LNode n2 l2) = compare (n1, l1) (n2, l2)
+instance (Show (Node gr), Show (NodeLabel gr)) => Show (LNode gr) where
+  show (LNode n l) = concat ["LNode ", show n, " ", show l]
+instance (Hashable (Node gr), Hashable (NodeLabel gr)) => Hashable (LNode gr) where
+  hash (LNode n l) = hash n `combine` hash l
 
+-- | A labeled edge in a graph
 data LEdge gr = LEdge { unlabelEdge :: Edge gr,
                         edgeLabel :: EdgeLabel gr
                       }
 instance (Eq (Edge gr), Eq (EdgeLabel gr)) => Eq (LEdge gr) where
   (LEdge e1 l1) == (LEdge e2 l2) = e1 == e2 && l1 == l2
+instance (Ord (Edge gr), Ord (EdgeLabel gr)) => Ord (LEdge gr) where
+  compare (LEdge e1 l1) (LEdge e2 l2) = compare (e1, l1) (e2, l2)
+instance (Show (Edge gr), Show (EdgeLabel gr)) => Show (LEdge gr) where
+  show (LEdge e l) = concat ["LEdge ", show e, " ", show l]
+instance (Hashable (Edge gr), Hashable (EdgeLabel gr)) => Hashable (LEdge gr) where
+  hash (LEdge e l) = hash e `combine` hash l
 
+-- | An edge in a graph
 data Edge gr = Edge { edgeSource :: Node gr
                     , edgeDest :: Node gr
                     }
 instance (Eq (Node gr)) => Eq (Edge gr) where
   (Edge s1 d1) == (Edge s2 d2) = s1 == s2 && d1 == d2
+instance (Ord (Node gr)) => Ord (Edge gr) where
+  compare (Edge s1 d1) (Edge s2 d2) = compare (s1, d1) (s2, d2)
 instance (Show (Node gr)) => Show (Edge gr) where
-  show (Edge s d) = "Edge " ++ show s ++ " " ++ show d
+  show (Edge s d) = concat ["Edge ", show s, " ", show d]
+instance (Hashable (Node gr)) => Hashable (Edge gr) where
+  hash (Edge s d) = hash s `combine` hash d
 
 type Adj gr = [(Node gr, EdgeLabel gr)]
 
