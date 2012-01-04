@@ -123,33 +123,22 @@ class (IncidenceGraph gr) => BidirectionalGraph gr where
 -- required implementation: 'lsuc' or 'suc'
 class (InspectableGraph gr) => AdjacencyGraph gr where
   suc :: gr -> Node gr -> [Node gr]
-  suc g = map unlabelNode . lsuc g
+  suc g = map fst . lsuc g
 
   -- | Suggested complexity: log(N)
-  lsuc :: gr -> Node gr -> [LNode gr]
-  lsuc g n = map (addLabel g) (suc g n)
-    where
-      addLabel gr s = case context gr s of
-        Nothing -> error "lsuc: expected context not found"
-        Just (Context _ ln _) -> ln
+  lsuc :: gr -> Node gr -> [(Node gr, EdgeLabel gr)]
+  lsuc g = maybe [] contextOutgoingLinks . context g
 
 -- | Graphs with efficient access to predecessor nodes.  Minimum required
 -- implementation: 'lpre' or 'pre'.
 class (AdjacencyGraph gr) => BidirectionalAdjacencyGraph gr where
   pre :: gr -> Node gr -> [Node gr]
-  pre g = map unlabelNode . lpre g
+  pre g = map fst . lpre g
 
-  lpre :: gr -> Node gr -> [LNode gr]
-  lpre g n = map (addLabel g) (pre g n)
-    where
-      addLabel gr p = case context gr p of
-        Nothing -> error "lpre: expected context not found"
-        Just (Context _ ln _) -> ln
-  -- FIXME: Remove duplicates
-  lneighbors :: gr -> Node gr -> [LNode gr]
-  lneighbors g n = lpre g n ++ lsuc g n
+  lpre :: gr -> Node gr -> [(Node gr, EdgeLabel gr)]
+  lpre g = maybe [] contextIncomingLinks . context g
   neighbors :: gr -> Node gr -> [Node gr]
-  neighbors g = map unlabelNode . lneighbors g
+  neighbors g n = pre g n ++ suc g n
 
 -- | Graphs with efficient access to all of the nodes in the graph.
 -- Minimum required implementation: @labNodes@.
