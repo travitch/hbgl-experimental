@@ -64,10 +64,9 @@ instance (Hashable e, Eq e, Eq (LNode (Gr HashSetPair n e)),
 instance (Hashable e, Eq e) => Monoid (Gr HashSetPair n e) where
   mempty = Gr (IM.empty)
   mappend (Gr g1) (Gr g2) = Gr (IM.unionWith mergeContext g1 g2)
-{-
-instance (NFData (LNode (Gr HashSetPair n e))) => NFData (Gr HashSetPair n e) where
+instance (NFData e, NFData (LNode (Gr HashSetPair n e))) => NFData (Gr HashSetPair n e) where
   rnf g@(Gr r) = r `deepseq` g `seq` ()
--}
+
 instance (LinkStorage s Int e, Eq (LNode (Gr s n e)), Eq (s Int e))
          => Graph (Gr s n e) where
   type Node (Gr s n e) = Int

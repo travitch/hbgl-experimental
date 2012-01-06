@@ -8,6 +8,7 @@ module Data.Graph.LinkStorage (
   SHMap
   ) where
 
+import Control.DeepSeq
 import Data.Hashable
 import qualified Data.HashSet as HS
 import qualified Data.Set as S
@@ -54,6 +55,8 @@ instance (Hashable n, Eq n, Hashable l, Eq l) => Eq (HashSetPair n l) where
 instance (Hashable n, Eq n, Hashable l, Eq l) => Monoid (HashSetPair n l) where
   mempty = HSP HS.empty
   (HSP h1) `mappend` (HSP h2) = HSP (h1 `mappend` h2)
+instance (NFData n, NFData l) => NFData (HashSetPair n l) where
+  rnf (HSP h) = h `deepseq` ()
 
 newtype SetPair a b = SP { unSP :: S.Set (a, b) }
                     deriving (Eq)
@@ -71,6 +74,8 @@ instance (Ord n, Ord l) => Ord (SetPair n l) where
 instance (Ord n, Ord l) => Monoid (SetPair n l) where
   mempty = SP S.empty
   (SP s1) `mappend` (SP s2) = SP (s1 `mappend` s2)
+instance (NFData n, NFData l) => NFData (SetPair n l) where
+  rnf (SP s) = s `deepseq` ()
 
 newtype ListPair a b = LP { unLP :: [(a, b)] }
                      deriving (Eq)
@@ -84,6 +89,8 @@ instance (Eq n, Eq l) => LinkStorage ListPair n l where
 instance Monoid (ListPair n l) where
   mempty = LP []
   (LP l1) `mappend` (LP l2) = LP (l1 `mappend` l2)
+instance (NFData n, NFData l) => NFData (ListPair n l) where
+  rnf (LP l) = l `deepseq` ()
 
 newtype SHMap a b = SHMap { unSHM :: SHM.HashMap a b }
                   deriving (Eq)
@@ -97,6 +104,8 @@ instance (Eq n, Eq l, Hashable n, Hashable l) => LinkStorage SHMap n l where
 instance (Eq n, Eq l, Hashable n, Hashable l) => Monoid (SHMap n l) where
   mempty = SHMap SHM.empty
   (SHMap m1) `mappend` (SHMap m2) = SHMap (m1 `mappend` m2)
+instance (NFData n, NFData l) => NFData (SHMap n l) where
+  rnf (SHMap m) = m `deepseq` ()
 
 newtype LHMap a b = LHMap { unLHM :: LHM.HashMap a b }
                   deriving (Eq)
@@ -110,3 +119,5 @@ instance (Eq n, Eq l, Hashable n, Hashable l) => LinkStorage LHMap n l where
 instance (Eq n, Eq l, Hashable n, Hashable l) => Monoid (LHMap n l) where
   mempty = LHMap LHM.empty
   (LHMap m1) `mappend` (LHMap m2) = LHMap (m1 `mappend` m2)
+instance (NFData n, NFData l) => NFData (LHMap n l) where
+  rnf (LHMap m) = m `deepseq` ()
