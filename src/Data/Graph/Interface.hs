@@ -37,6 +37,7 @@ module Data.Graph.Interface (
   neighbors'
   ) where
 
+import Control.DeepSeq
 import qualified Data.Foldable as F
 import Data.Hashable
 
@@ -52,6 +53,8 @@ instance (Show (Node gr), Show (NodeLabel gr)) => Show (LNode gr) where
   show (LNode n l) = concat ["LNode ", show n, " ", show l]
 instance (Hashable (Node gr), Hashable (NodeLabel gr)) => Hashable (LNode gr) where
   hash (LNode n l) = hash n `combine` hash l
+instance (NFData (Node gr), NFData (NodeLabel gr)) => NFData (LNode gr) where
+  rnf ln@(LNode n l) = n `deepseq` l `deepseq` ln `seq` ()
 
 -- | A labeled edge in a graph
 data LEdge gr = LEdge { unlabelEdge :: Edge gr,
@@ -65,6 +68,8 @@ instance (Show (Edge gr), Show (EdgeLabel gr)) => Show (LEdge gr) where
   show (LEdge e l) = concat ["LEdge ", show e, " ", show l]
 instance (Hashable (Edge gr), Hashable (EdgeLabel gr)) => Hashable (LEdge gr) where
   hash (LEdge e l) = hash e `combine` hash l
+instance (NFData (Edge gr), NFData (EdgeLabel gr)) => NFData (LEdge gr) where
+  rnf le@(LEdge e l) = e `deepseq` l `deepseq` le `seq` ()
 
 -- | An edge in a graph
 data Edge gr = Edge { edgeSource :: Node gr
@@ -78,6 +83,8 @@ instance (Show (Node gr)) => Show (Edge gr) where
   show (Edge s d) = concat ["Edge ", show s, " ", show d]
 instance (Hashable (Node gr)) => Hashable (Edge gr) where
   hash (Edge s d) = hash s `combine` hash d
+instance (NFData (Node gr)) => NFData (Edge gr) where
+  rnf e@(Edge n1 n2) = n1 `deepseq` n2 `deepseq` e `seq` ()
 
 type Adj gr = [(Node gr, EdgeLabel gr)]
 
@@ -285,10 +292,12 @@ class (DecomposableGraph gr, (Eq (EdgeLabel gr))) => MutableGraph gr where
   delLEdge (LEdge (Edge src dst) lbl) g =
     case match src g of
       Nothing -> error "delLEdge: source edge not in graph"
-      Just (Context p ln s, g') -> Context p ln (filter (/=(dst,lbl)) s) & g'
+      Just (Context p ln s, g') ->
+        let keepEdge (d,l) = dst /= d || lbl /= l
+        in Context p ln (filter keepEdge s) & g'
 
   insNode :: LNode gr -> gr -> gr
-  insNode ln g = (Context [] ln []) & g
+  insNode ln = ((Context [] ln []) &)
 
 -- FIXME: Instead of throwing errors, add overridable hooks that can
 -- either throw an error or act as id?

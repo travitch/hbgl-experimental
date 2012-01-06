@@ -9,10 +9,12 @@ module Data.Graph.PatriciaTree (
   SHMGraph
   ) where
 
+import Control.DeepSeq
 import Data.Foldable ( find, foldl' )
 import Data.Hashable
 import Data.IntMap ( IntMap )
 import qualified Data.IntMap as IM
+import Data.Monoid
 
 import Data.Graph.Interface
 import Data.Graph.LinkStorage
@@ -24,8 +26,15 @@ data Context' s n e =
            }
 
 instance (Eq (LNode (Gr s n e)), Eq (s Int e)) => Eq (Context' s n e) where
-  (Context' p1 n1 s1) == (Context' p2 n2 s2) =
-    n1 == n2 && p1 == p2 && s1 == s2
+  (Context' _ n1 s1) == (Context' _ n2 s2) =
+    n1 == n2 && s1 == s2
+instance (NFData (s Int e), NFData (LNode (Gr s n e))) => NFData (Context' s n e) where
+  rnf c@(Context' s ln p) = s `deepseq` p `deepseq` ln `deepseq` c `seq` ()
+
+-- The merge just takes the label of the first context.
+mergeContext :: Monoid (s Int e) => Context' s n e -> Context' s n e -> Context' s n e
+mergeContext (Context' p1 ln s1) (Context' p2 _ s2) =
+  Context' (mappend p1 p2) ln (mappend s1 s2)
 
 type GraphRepr s n e = IntMap (Context' s n e)
 -- | The base graph type, parameterized by link storage type.
@@ -52,8 +61,13 @@ instance (Hashable e, Eq e, Eq (LNode (Gr HashSetPair n e)),
           Eq (HashSetPair Int e))
          => ComparableGraph (Gr HashSetPair n e) where
   graphEqual (Gr g1) (Gr g2) = g1 == g2
-
-
+instance (Hashable e, Eq e) => Monoid (Gr HashSetPair n e) where
+  mempty = Gr (IM.empty)
+  mappend (Gr g1) (Gr g2) = Gr (IM.unionWith mergeContext g1 g2)
+{-
+instance (NFData (LNode (Gr HashSetPair n e))) => NFData (Gr HashSetPair n e) where
+  rnf g@(Gr r) = r `deepseq` g `seq` ()
+-}
 instance (LinkStorage s Int e, Eq (LNode (Gr s n e)), Eq (s Int e))
          => Graph (Gr s n e) where
   type Node (Gr s n e) = Int
