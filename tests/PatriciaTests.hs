@@ -23,6 +23,12 @@ main = defaultMain tests
     iprops = [ testProperty "allNodesInGraph" prop_nodesLenIsNumNodes
              , testProperty "matchAndMergeAreDual" prop_matchAndMergeAreDual
              , testProperty "gelemAndMatchAgree" prop_gelemAndMatchAgree
+             , testProperty "prop_matchRemovesNodeRefs" prop_matchRemovesNodeRefs
+             , testProperty "prop_insNodeWorks" prop_insNodeWorks
+             , testProperty "prop_insEdgeUpdatesSuc" prop_insEdgeUpdatesSuc
+             , testProperty "prop_insEdgeUpdatesPre" prop_insEdgeUpdatesPre
+             , testProperty "prop_insEdgeUpdatesSelfSuc" prop_insEdgeUpdatesSelfSuc
+             , testProperty "prop_insEdgeUpdatesSelfPre" prop_insEdgeUpdatesSelfPre
              ]
     ctests = [ testCase "scc1" test_scc1
              , testCase "condense1" test_condense1
@@ -43,6 +49,17 @@ instance Show SG where
 arbitraryGraph :: Gen SG
 arbitraryGraph = sized mkSG
 
+newtype NodeId = NID Int
+instance Arbitrary NodeId where
+  arbitrary = sized mkNodeId
+    where
+      mkNodeId n = do
+        i <- choose (0, n)
+        return (NID i)
+instance Show NodeId where
+  show (NID i) = show i
+
+
 mkSG :: Int -> Gen SG
 mkSG sz = do
   let ns = map (\n -> LNode n ()) [0..sz]
@@ -55,15 +72,47 @@ mkSG sz = do
 prop_nodesLenIsNumNodes :: SG -> Bool
 prop_nodesLenIsNumNodes g = noNodes g == length (nodes g)
 
-prop_matchAndMergeAreDual :: SG -> Property
-prop_matchAndMergeAreDual g =
-  gelem 2 g ==> case match 2 g of
-    Nothing -> error "2 should be in g"
+prop_matchAndMergeAreDual :: (NodeId, SG) -> Property
+prop_matchAndMergeAreDual (NID n, g) =
+  gelem n g ==> case match n g of
+    Nothing -> error (show n ++ " should be in g")
     Just (c, g') -> g `graphEqual` (c & g')
 
-prop_gelemAndMatchAgree :: (Int, SG) -> Bool
-prop_gelemAndMatchAgree (n, g) =
+prop_gelemAndMatchAgree :: (NodeId, SG) -> Bool
+prop_gelemAndMatchAgree (NID n, g) =
   maybe False (const True) (match n g) == gelem n g
+
+prop_matchRemovesNodeRefs :: (NodeId, SG) -> Bool
+prop_matchRemovesNodeRefs (NID n, g) =
+  case match n g of
+    Nothing -> True
+    Just (_, g') ->
+      all (\(Edge s d) -> s /= n && d /= n) (edges g')
+
+prop_insEdgeUpdatesSuc :: (NodeId, NodeId, SG) -> Bool
+prop_insEdgeUpdatesSuc (NID s, NID d, g) =
+  let g' = insEdge (LEdge (Edge s d) ()) g
+  in d `elem` suc g' s
+
+prop_insEdgeUpdatesPre :: (NodeId, NodeId, SG) -> Bool
+prop_insEdgeUpdatesPre (NID s, NID d, g) =
+  let g' = insEdge (LEdge (Edge s d) ()) g
+  in s `elem` pre g' d
+
+prop_insEdgeUpdatesSelfSuc :: (NodeId, SG) -> Bool
+prop_insEdgeUpdatesSelfSuc (NID d, g) =
+  let g' = insEdge (LEdge (Edge d d) ()) g
+  in d `elem` suc g' d
+
+prop_insEdgeUpdatesSelfPre :: (NodeId, SG) -> Bool
+prop_insEdgeUpdatesSelfPre (NID d, g) =
+  let g' = insEdge (LEdge (Edge d d) ()) g
+  in d `elem` pre g' d
+
+prop_insNodeWorks :: (NodeId, SG) -> Bool
+prop_insNodeWorks (NID n, g) =
+  let g' = insNode (LNode (n + 100) ()) g
+  in gelem (n + 100) g'
 
 cg1 :: SG
 cg1 = mkGraph (map (\n -> LNode n ()) [1..5]) es
