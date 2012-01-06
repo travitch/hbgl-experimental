@@ -27,6 +27,7 @@ class (Eq n, Eq l, Monoid (c n l)) => LinkStorage c n l where
   linkDeleteAll :: n -> c n l -> c n l
   -- | Remove all links to the given node with the given label
   linkDelete :: n -> l -> c n l -> c n l
+  linkSize :: c n l -> Int
 
   -- | Convert a link storage data structure into a list of (Node,
   -- EdgeLabel) pairs.
@@ -48,13 +49,16 @@ instance (Hashable n, Hashable l, Eq n, Eq l) => LinkStorage HashSetPair n l whe
   linkFold f seed = HS.foldr (\(n,l) acc -> f n l acc) seed . unHSP
   linkDeleteAll n = HSP . HS.filter ((/=n) . fst) . unHSP
   linkDelete n l = HSP . HS.filter (/=(n,l)) . unHSP
+  linkSize = HS.size . unHSP
 instance (Show n, Show l) => Show (HashSetPair n l) where
   show (HSP hs) = show hs
 instance (Hashable n, Eq n, Hashable l, Eq l) => Eq (HashSetPair n l) where
   (HSP h1) == (HSP h2) = h1 == h2
 instance (Hashable n, Eq n, Hashable l, Eq l) => Monoid (HashSetPair n l) where
   mempty = HSP HS.empty
-  (HSP h1) `mappend` (HSP h2) = HSP (h1 `mappend` h2)
+  (HSP h1) `mappend` (HSP h2) =
+    let h3 = h1 `mappend` h2
+    in HSP (HS.size h3 `seq` h3)
 instance (NFData n, NFData l) => NFData (HashSetPair n l) where
   rnf (HSP h) = h `deepseq` ()
 
@@ -67,13 +71,16 @@ instance (Ord n, Ord l, Eq n, Eq l) => LinkStorage SetPair n l where
   linkFold f seed = S.fold (\(n, l) acc -> f n l acc) seed . unSP
   linkDeleteAll n = SP . S.filter ((/=n) . fst) . unSP
   linkDelete n l = SP . S.filter (/= (n,l)) . unSP
+  linkSize = S.size . unSP
 instance (Show n, Show l) => Show (SetPair n l) where
   show (SP s) = show s
 instance (Ord n, Ord l) => Ord (SetPair n l) where
   compare (SP s1) (SP s2) = compare s1 s2
 instance (Ord n, Ord l) => Monoid (SetPair n l) where
   mempty = SP S.empty
-  (SP s1) `mappend` (SP s2) = SP (s1 `mappend` s2)
+  (SP s1) `mappend` (SP s2) =
+    let s3 = s1 `mappend` s2
+    in SP (S.size s3 `seq` s3)
 instance (NFData n, NFData l) => NFData (SetPair n l) where
   rnf (SP s) = s `deepseq` ()
 
@@ -86,12 +93,17 @@ instance (Eq n, Eq l) => LinkStorage ListPair n l where
   linkFold f seed = foldr (\(n,l) acc -> f n l acc) seed . unLP
   linkDeleteAll n = LP . filter ((/=n) . fst) . unLP
   linkDelete n l = LP . filter (/=(n,l)) . unLP
+  linkSize = length . unLP
 instance Monoid (ListPair n l) where
   mempty = LP []
-  (LP l1) `mappend` (LP l2) = LP (l1 `mappend` l2)
+  (LP l1) `mappend` (LP l2) =
+    let l3 = l1 `mappend` l2
+    in LP (length l3 `seq` l3)
 instance (NFData n, NFData l) => NFData (ListPair n l) where
   rnf (LP l) = l `deepseq` ()
 
+-- | oops fixme: these map-based implementations need to have
+-- containers for link storage instead of simple 1-1 mappings
 newtype SHMap a b = SHMap { unSHM :: SHM.HashMap a b }
                   deriving (Eq)
 instance (Eq n, Eq l, Hashable n, Hashable l) => LinkStorage SHMap n l where
@@ -101,6 +113,7 @@ instance (Eq n, Eq l, Hashable n, Hashable l) => LinkStorage SHMap n l where
   linkFold f seed = SHM.foldrWithKey f seed . unSHM
   linkDeleteAll n = SHMap . SHM.filterWithKey (\k _ -> n /= k) . unSHM
   linkDelete n l = SHMap . SHM.filterWithKey (\k v -> n /= k || v /= l) . unSHM
+  linkSize = SHM.size . unSHM
 instance (Eq n, Eq l, Hashable n, Hashable l) => Monoid (SHMap n l) where
   mempty = SHMap SHM.empty
   (SHMap m1) `mappend` (SHMap m2) = SHMap (m1 `mappend` m2)
@@ -116,6 +129,7 @@ instance (Eq n, Eq l, Hashable n, Hashable l) => LinkStorage LHMap n l where
   linkFold f seed = LHM.foldrWithKey f seed . unLHM
   linkDeleteAll n = LHMap . LHM.filterWithKey (\k _ -> n /= k) . unLHM
   linkDelete n l = LHMap . LHM.filterWithKey (\k v -> n /= k || v /= l) . unLHM
+  linkSize = LHM.size . unLHM
 instance (Eq n, Eq l, Hashable n, Hashable l) => Monoid (LHMap n l) where
   mempty = LHMap LHM.empty
   (LHMap m1) `mappend` (LHMap m2) = LHMap (m1 `mappend` m2)

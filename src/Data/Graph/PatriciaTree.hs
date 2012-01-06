@@ -20,9 +20,9 @@ import Data.Graph.Interface
 import Data.Graph.LinkStorage
 
 data Context' s n e =
-  Context' { adjInc :: s (Node (Gr s n e)) (EdgeLabel (Gr s n e))
-           , contextNode :: LNode (Gr s n e)
-           , adjOut :: s (Node (Gr s n e)) (EdgeLabel (Gr s n e))
+  Context' { adjInc :: !(s (Node (Gr s n e)) (EdgeLabel (Gr s n e)))
+           , contextNode :: !(LNode (Gr s n e))
+           , adjOut :: !(s (Node (Gr s n e)) (EdgeLabel (Gr s n e)))
            }
 
 instance (Eq (LNode (Gr s n e)), Eq (s Int e)) => Eq (Context' s n e) where
@@ -32,13 +32,16 @@ instance (NFData (s Int e), NFData (LNode (Gr s n e))) => NFData (Context' s n e
   rnf c@(Context' s ln p) = s `deepseq` p `deepseq` ln `deepseq` c `seq` ()
 
 -- The merge just takes the label of the first context.
-mergeContext :: Monoid (s Int e) => Context' s n e -> Context' s n e -> Context' s n e
+mergeContext :: (NFData (s Int e), LinkStorage s Int e, Monoid (s Int e))
+                => Context' s n e -> Context' s n e -> Context' s n e
 mergeContext (Context' p1 ln s1) (Context' p2 _ s2) =
-  Context' (mappend p1 p2) ln (mappend s1 s2)
+  let p3 = p1 `mappend` p2
+      s3 = s1 `mappend` s2
+  in Context' p3 ln s3
 
 type GraphRepr s n e = IntMap (Context' s n e)
 -- | The base graph type, parameterized by link storage type.
-data Gr (s :: * -> * -> *) n e = Gr { graphRepr :: GraphRepr s n e }
+data Gr (s :: * -> * -> *) n e = Gr { graphRepr :: !(GraphRepr s n e) }
 
 -- FIXME: Try to use type families to make Contex' = Context if s == []
 
@@ -61,9 +64,11 @@ instance (Hashable e, Eq e, Eq (LNode (Gr HashSetPair n e)),
           Eq (HashSetPair Int e))
          => ComparableGraph (Gr HashSetPair n e) where
   graphEqual (Gr g1) (Gr g2) = g1 == g2
-instance (Hashable e, Eq e) => Monoid (Gr HashSetPair n e) where
+instance (NFData e, NFData n, Hashable e, Eq e) => Monoid (Gr HashSetPair n e) where
   mempty = Gr (IM.empty)
-  mappend (Gr g1) (Gr g2) = Gr (IM.unionWith mergeContext g1 g2)
+  mappend (Gr g1) (Gr g2) =
+    let g3 = IM.unionWith mergeContext g1 g2
+    in Gr g3
 instance (NFData e, NFData (LNode (Gr HashSetPair n e))) => NFData (Gr HashSetPair n e) where
   rnf g@(Gr r) = r `deepseq` g `seq` ()
 
