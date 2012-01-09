@@ -1,9 +1,13 @@
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilies, FlexibleContexts #-}
 -- | A compact (immutable) adjacency list graph representation.  Nodes
 -- can be of any orderable type.  The primary purpose of this graph is
 -- to be compact in memory.
 module Data.Graph.Compact where
 
+import Data.List ( foldl', sortBy )
+import Data.Map ( Map )
+import qualified Data.Map as M
+import Data.Ord ( comparing )
 import Data.Vector ( Vector, (!) )
 import qualified Data.Vector as V
 
@@ -38,9 +42,48 @@ instance (Eq n, Ord n) => Graph (Gr n nl el) where
   type NodeLabel (Gr n nl el) = nl
   type EdgeLabel (Gr n nl el) = el
 
-  mkGraph ns es = undefined
+  mkGraph = mkAdjacencyList
   empty = Gr V.empty
   isEmpty = V.null . graphRepr
+
+mkAdjacencyList :: (Ord (Node (Gr n nl el)))
+                   => [LNode (Gr n nl el)]
+                   -> [LEdge (Gr n nl el)]
+                   -> Gr n nl el
+mkAdjacencyList ns es = Gr contextList
+  where
+    -- Sorted list of nodes (this is the order of the contexts in the
+    -- vector)
+    nodeList = sortBy (comparing unlabelNode) ns
+    -- A mapping from nodes to their index into the vector
+    ixMap = M.fromList $ zip (map unlabelNode nodeList) [0..]
+
+    (fwdEdgeMap, revEdgeMap) = foldl' (mkEdgeMap ixMap) (M.empty, M.empty) es
+
+    contextList = V.fromList $ map (mkContext fwdEdgeMap revEdgeMap) nodeList
+
+mkContext :: (Ord n)
+             => Map (Node (Gr n nl el)) [Adj' el]
+             -> Map (Node (Gr n nl el)) [Adj' el]
+             -> LNode (Gr n nl el)
+             -> Context' n nl el
+mkContext fwdEdgeMap revEdgeMap ln@(LNode n _) =
+  Context' (adjLookup n fwdEdgeMap) ln (adjLookup n revEdgeMap)
+  where
+    errMsg = error "No mapping in adjacency map during graph construction"
+    adjLookup = M.findWithDefault errMsg
+
+mkEdgeMap :: (Ord n)
+             => Map (Node (Gr n nl el)) Int
+             -> (Map (Node (Gr n nl el)) [Adj' el], Map (Node (Gr n nl el)) [Adj' el])
+             -> LEdge (Gr n nl el)
+             -> (Map (Node (Gr n nl el)) [Adj' el], Map (Node (Gr n nl el)) [Adj' el])
+mkEdgeMap ixMap (fwdMap, revMap) (LEdge (Edge src dst) lbl) = (f', r')
+  where
+    errMsg = error "No mapping for node in ixMap during graph construction"
+    ixLookup = M.findWithDefault errMsg
+    f' = M.insertWith' (++) src [(Adj' (ixLookup dst ixMap) lbl)] fwdMap
+    r' = M.insertWith' (++) dst [(Adj' (ixLookup src ixMap) lbl)] revMap
 
 binarySearch :: (Eq n, Ord n)
                 => GraphRepr n nl el
@@ -67,3 +110,44 @@ binarySearch v n =
 instance (Eq n, Ord n) => InspectableGraph (Gr n nl el) where
   context (Gr v) n = do
     Context' p ln s <- binarySearch v n
+    let p' = map (convertAdj v) p
+        s' = map (convertAdj v) s
+    return $! Context p' ln s'
+    where
+      convertAdj vec (Adj' ix lbl) =
+        let nod = unlabelNode $ contextNode (vec ! ix)
+        in (nod, lbl)
+  gelem n (Gr v) = maybe False (const True) (binarySearch v n)
+
+instance (Eq n, Ord n) => IncidenceGraph (Gr n nl el) where
+  lout g n =
+    case context g n of
+      Nothing -> []
+      Just (Context _ (LNode src _) s) -> map (toLEdge src) s
+    where
+      toLEdge src (dest, elbl) = LEdge (Edge src dest) elbl
+
+instance (Eq n, Ord n) => BidirectionalGraph (Gr n nl el) where
+  linn g n =
+    case context g n of
+      Nothing -> []
+      Just (Context p (LNode dest _) _) -> map (toLEdge dest) p
+    where
+      toLEdge dest (src, elbl) = LEdge (Edge src dest) elbl
+
+instance (Eq n, Ord n) => AdjacencyGraph (Gr n nl el)
+instance (Eq n, Ord n) => BidirectionalAdjacencyGraph (Gr n nl el)
+
+instance (Eq n, Ord n) => VertexListGraph (Gr n nl el) where
+  labNodes (Gr v) = V.foldl' extractNode [] v
+    where
+      extractNode acc (Context' _ ln _) = ln : acc
+
+instance (Eq n, Ord n) => EdgeListGraph (Gr n nl el) where
+  labEdges (Gr v) = concat $ V.foldl (extractEdges v) [] v
+    where
+      extractEdges vec acc (Context' _ (LNode src _) s) =
+        map (toLEdge vec src) s : acc
+      toLEdge vec src (Adj' ix elbl) =
+        let dest = unlabelNode $ contextNode (vec ! ix)
+        in LEdge (Edge src dest) elbl
