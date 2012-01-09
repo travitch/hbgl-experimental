@@ -147,7 +147,7 @@ class (IncidenceGraph gr) => BidirectionalGraph gr where
   degree g n = outDeg g n + inDeg g n
 
 -- | Graphs with efficient access to successor nodes.  Minimum
--- required implementation: 'lsuc' or 'suc'
+-- required implementation: InspectableGraph
 class (InspectableGraph gr) => AdjacencyGraph gr where
   suc :: gr -> Node gr -> [Node gr]
   suc g = map fst . lsuc g
