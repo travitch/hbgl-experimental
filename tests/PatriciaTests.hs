@@ -12,7 +12,7 @@ import Test.QuickCheck
 
 import Data.Graph.Interface
 import Data.Graph.PatriciaTree
-import Data.Graph.Algorithms.DFS
+import Data.Graph.Algorithms.Matching.DFS
 
 main :: IO ()
 main = defaultMain tests

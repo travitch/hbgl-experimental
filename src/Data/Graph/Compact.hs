@@ -68,10 +68,9 @@ mkContext :: (Ord n)
              -> LNode (Gr n nl el)
              -> Context' n nl el
 mkContext fwdEdgeMap revEdgeMap ln@(LNode n _) =
-  Context' (adjLookup n fwdEdgeMap) ln (adjLookup n revEdgeMap)
+  Context' (adjLookup n revEdgeMap) ln (adjLookup n fwdEdgeMap)
   where
-    errMsg = error "No mapping in adjacency map during graph construction"
-    adjLookup = M.findWithDefault errMsg
+    adjLookup = M.findWithDefault []
 
 mkEdgeMap :: (Ord n)
              => Map (Node (Gr n nl el)) Int

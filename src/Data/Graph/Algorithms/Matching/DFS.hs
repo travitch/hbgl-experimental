@@ -3,7 +3,7 @@
 -- decomposable graphs.  An alternative module will define variants
 -- that work for non-decomposable graphs (that variant will require
 -- (Node gr) to be an instance of Ord).
-module Data.Graph.Algorithms.DFS (
+module Data.Graph.Algorithms.Matching.DFS (
   -- * Directed DFS
   dfs,
   dfs',
