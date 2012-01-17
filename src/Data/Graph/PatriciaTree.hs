@@ -5,6 +5,7 @@ module Data.Graph.PatriciaTree (
   HSGraph,
   SGraph,
   LGraph,
+  SLGraph,
   LHMGraph,
   SHMGraph
   ) where
@@ -51,6 +52,8 @@ type HSGraph = Gr HashSetPair
 type SGraph = Gr SetPair
 -- | A graph that stores edges in a list
 type LGraph = Gr ListPair
+-- | A graph that stores edges (uniquely) in a sorted list
+type SLGraph = Gr SortedListPair
 -- | A graph that stores edges using a lazy hashmap
 type LHMGraph = Gr LHMap
 -- | A graph that stores edges using a strict hashmap
@@ -71,6 +74,20 @@ instance (NFData e, NFData n, Hashable e, Eq e) => Monoid (Gr HashSetPair n e) w
     in Gr g3
 instance (NFData e, NFData (LNode (Gr HashSetPair n e))) => NFData (Gr HashSetPair n e) where
   rnf g@(Gr r) = r `deepseq` g `seq` ()
+
+instance (Eq e, Ord e, Eq (LNode (Gr SortedListPair n e)),
+          Eq (SortedListPair Int e))
+         => ComparableGraph (Gr SortedListPair n e) where
+  graphEqual (Gr g1) (Gr g2) = g1 == g2
+instance (NFData e, NFData n, Ord e, Eq e) => Monoid (Gr SortedListPair n e) where
+  mempty = Gr (IM.empty)
+  mappend (Gr g1) (Gr g2) =
+    let g3 = IM.unionWith mergeContext g1 g2
+    in Gr g3
+instance (NFData e, NFData (LNode (Gr SortedListPair n e)))
+         => NFData (Gr SortedListPair n e) where
+  rnf g@(Gr r) = r `deepseq` g `seq` ()
+
 
 instance (LinkStorage s Int e, Eq (LNode (Gr s n e)), Eq (s Int e))
          => Graph (Gr s n e) where

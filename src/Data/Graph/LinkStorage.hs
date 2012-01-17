@@ -1,9 +1,10 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, BangPatterns #-}
 module Data.Graph.LinkStorage (
   LinkStorage(..),
   HashSetPair,
   SetPair,
   ListPair,
+  SortedListPair,
   LHMap,
   SHMap
   ) where
@@ -11,6 +12,7 @@ module Data.Graph.LinkStorage (
 import Control.DeepSeq
 import Data.Hashable
 import qualified Data.HashSet as HS
+import qualified Data.List.Ordered as L
 import qualified Data.Set as S
 import qualified Data.HashMap.Strict as SHM
 import qualified Data.HashMap.Lazy as LHM
@@ -101,6 +103,36 @@ instance Monoid (ListPair n l) where
     in LP (length l3 `seq` l3)
 instance (NFData n, NFData l) => NFData (ListPair n l) where
   rnf (LP l) = l `deepseq` ()
+
+newtype SortedListPair a b = SLP { unSLP :: [(a, b)] }
+instance (Eq n, Ord n, Eq l, Ord l) => LinkStorage SortedListPair n l where
+  linkEmpty = SLP []
+  linkNull = null . unSLP
+  linkInsert n l s =
+    case (n, l) `elem` unSLP s of
+      True -> s
+      False ->
+        let s' = L.insertBag (n, l) (unSLP s)
+        in case (n, l) `elem` s' of
+          True -> SLP s'
+          False -> SLP s'
+  linkFold f seed = foldr (\(n,l) acc -> f n l acc) seed . unSLP
+  linkDeleteAll n = SLP . filter ((/=n) . fst) . unSLP
+  linkDelete n l = SLP . filter (/=(n,l)) . unSLP
+  linkSize = length . unSLP
+instance (Eq n, Ord n, Eq l, Ord l) => Monoid (SortedListPair n l) where
+  mempty = SLP []
+  (SLP l1) `mappend` (SLP l2) =
+    let !l3 = L.union l1 l2
+    in SLP (length l3 `seq` l3)
+instance (NFData n, NFData l) => NFData (SortedListPair n l) where
+  rnf (SLP l) = l `deepseq` ()
+instance (Show n, Show l) => Show (SortedListPair n l) where
+  show (SLP l) = show l
+instance (Eq n, Eq l) => Eq (SortedListPair n l) where
+  (SLP l1) == (SLP l2) = l1 == l2
+instance (Ord n, Ord l) => Ord (SortedListPair n l) where
+  compare (SLP l1) (SLP l2) = compare l1 l2
 
 -- | oops fixme: these map-based implementations need to have
 -- containers for link storage instead of simple 1-1 mappings
