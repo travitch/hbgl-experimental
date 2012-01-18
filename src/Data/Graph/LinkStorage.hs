@@ -112,7 +112,7 @@ instance (Eq n, Ord n, Eq l, Ord l) => LinkStorage SortedListPair n l where
     case (n, l) `elem` unSLP s of
       True -> s
       False ->
-        let s' = L.insertBag (n, l) (unSLP s)
+        let s' = L.insertSet (n, l) (unSLP s)
         in case (n, l) `elem` s' of
           True -> SLP s'
           False -> SLP s'
