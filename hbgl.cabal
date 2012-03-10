@@ -24,8 +24,8 @@ library
   ghc-prof-options: -auto-all
   exposed-modules: Data.Graph.Interface,
                    Data.Graph.Compact,
+                   Data.Graph.HAMT,
                    Data.Graph.PatriciaTree,
-                   Data.Graph.LinkStorage,
                    Data.Graph.Algorithms.Basic,
                    Data.Graph.Algorithms.Marking.DFS,
                    Data.Graph.Algorithms.Matching.DFS

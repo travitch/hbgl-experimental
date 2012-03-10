@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilies, BangPatterns #-}
 module Data.Graph.PatriciaTree ( Gr ) where
 
 import Control.Arrow
