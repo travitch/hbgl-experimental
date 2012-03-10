@@ -4,7 +4,7 @@ import Data.Graph.Interface
 import Data.Graph.PatriciaTree
 
 
-type TestGraph1 = HSGraph Char String
+type TestGraph1 = Gr Char String
 
 g0 :: TestGraph1
 g0 = mkGraph ns es
@@ -21,7 +21,7 @@ g0 = mkGraph ns es
          , LEdge (Edge 1 2) "e4"
          ]
 
-type TestGraph2 = LGraph Char String
+type TestGraph2 = Gr Char String
 
 g1 :: TestGraph2
 g1 = mkGraph ns es

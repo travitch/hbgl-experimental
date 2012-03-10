@@ -1,99 +1,24 @@
-{-# LANGUAGE TypeFamilies, KindSignatures, BangPatterns, FlexibleInstances, FlexibleContexts #-}
-{-# LANGUAGE UndecidableInstances #-}
-module Data.Graph.PatriciaTree (
-  Gr,
-  HSGraph,
-  SGraph,
-  LGraph,
-  SLGraph,
-  LHMGraph,
-  SHMGraph
-  ) where
+{-# LANGUAGE TypeFamilies #-}
+module Data.Graph.PatriciaTree ( Gr ) where
 
-import Control.DeepSeq
-import Data.Foldable ( find, foldl' )
-import Data.Hashable
+import Control.Arrow
 import Data.IntMap ( IntMap )
 import qualified Data.IntMap as IM
-import Data.Monoid
+import Data.List ( foldl', find )
 
 import Data.Graph.Interface
-import Data.Graph.LinkStorage
 
-data Context' s n e =
-  Context' { adjInc :: !(s (Node (Gr s n e)) (EdgeLabel (Gr s n e)))
-           , contextNode :: !(LNode (Gr s n e))
-           , adjOut :: !(s (Node (Gr s n e)) (EdgeLabel (Gr s n e)))
-           }
+newtype Gr a b = Gr { graphRepr :: GraphRep a b }
+type GraphRep a b = IntMap (Context' a b)
+data Context' a b = Context' !(IntMap [b]) !(LNode (Gr a b)) !(IntMap [b])
 
-instance (Eq (LNode (Gr s n e)), Eq (s Int e)) => Eq (Context' s n e) where
-  (Context' _ n1 s1) == (Context' _ n2 s2) =
-    n1 == n2 && s1 == s2
-instance (NFData (s Int e), NFData (LNode (Gr s n e))) => NFData (Context' s n e) where
-  rnf c@(Context' s ln p) = s `deepseq` p `deepseq` ln `deepseq` c `seq` ()
+contextNode :: Context' a b -> LNode (Gr a b)
+contextNode (Context' _ a _) = a
 
--- The merge just takes the label of the first context.
-mergeContext :: (NFData (s Int e), LinkStorage s Int e, Monoid (s Int e))
-                => Context' s n e -> Context' s n e -> Context' s n e
-mergeContext (Context' p1 ln s1) (Context' p2 _ s2) =
-  let p3 = p1 `mappend` p2
-      s3 = s1 `mappend` s2
-  in Context' p3 ln s3
-
-type GraphRepr s n e = IntMap (Context' s n e)
--- | The base graph type, parameterized by link storage type.
-data Gr (s :: * -> * -> *) n e = Gr { graphRepr :: !(GraphRepr s n e) }
-
--- FIXME: Try to use type families to make Contex' = Context if s == []
-
--- | A graph that stores edges in a hash set
-type HSGraph = Gr HashSetPair
--- | A graph that stores edges in a normal set
-type SGraph = Gr SetPair
--- | A graph that stores edges in a list
-type LGraph = Gr ListPair
--- | A graph that stores edges (uniquely) in a sorted list
-type SLGraph = Gr SortedListPair
--- | A graph that stores edges using a lazy hashmap
-type LHMGraph = Gr LHMap
--- | A graph that stores edges using a strict hashmap
-type SHMGraph = Gr SHMap
-
-
--- If we instantiate Gr with a HashSet for storage, the edge sets have
--- canonical forms and we can have a relatively cheap graph equality
--- check.
-instance (Hashable e, Eq e, Eq (LNode (Gr HashSetPair n e)),
-          Eq (HashSetPair Int e))
-         => ComparableGraph (Gr HashSetPair n e) where
-  graphEqual (Gr g1) (Gr g2) = g1 == g2
-instance (NFData e, NFData n, Hashable e, Eq e) => Monoid (Gr HashSetPair n e) where
-  mempty = Gr (IM.empty)
-  mappend (Gr g1) (Gr g2) =
-    let g3 = IM.unionWith mergeContext g1 g2
-    in Gr g3
-instance (NFData e, NFData (LNode (Gr HashSetPair n e))) => NFData (Gr HashSetPair n e) where
-  rnf g@(Gr r) = r `deepseq` g `seq` ()
-
-instance (Eq e, Ord e, Eq (LNode (Gr SortedListPair n e)),
-          Eq (SortedListPair Int e))
-         => ComparableGraph (Gr SortedListPair n e) where
-  graphEqual (Gr g1) (Gr g2) = g1 == g2
-instance (NFData e, NFData n, Ord e, Eq e) => Monoid (Gr SortedListPair n e) where
-  mempty = Gr (IM.empty)
-  mappend (Gr g1) (Gr g2) =
-    let g3 = IM.unionWith mergeContext g1 g2
-    in Gr g3
-instance (NFData e, NFData (LNode (Gr SortedListPair n e)))
-         => NFData (Gr SortedListPair n e) where
-  rnf g@(Gr r) = r `deepseq` g `seq` ()
-
-
-instance (LinkStorage s Int e, Eq (LNode (Gr s n e)), Eq (s Int e))
-         => Graph (Gr s n e) where
-  type Node (Gr s n e) = Int
-  type NodeLabel (Gr s n e) = n
-  type EdgeLabel (Gr s n e) = e
+instance (Eq e, Eq n) => Graph (Gr n e) where
+  type Node (Gr n e) = Int
+  type NodeLabel (Gr n e) = n
+  type EdgeLabel (Gr n e) = e
 
   mkGraph ns es =
     let g0 = insNodes ns empty
@@ -101,14 +26,12 @@ instance (LinkStorage s Int e, Eq (LNode (Gr s n e)), Eq (s Int e))
   empty = Gr IM.empty
   isEmpty = IM.null . graphRepr
 
-instance (LinkStorage s Int e, Eq (LNode (Gr s n e)), Eq (s Int e))
-         => InspectableGraph (Gr s n e) where
+instance (Eq e, Eq n) => InspectableGraph (Gr n e) where
   context g n = do
     Context' p ln s <- IM.lookup n (graphRepr g)
-    return $! Context (linkToList p) ln (linkToList s)
+    return $! Context (toAdj p) ln (toAdj s)
 
-instance (LinkStorage s Int e, Eq (LNode (Gr s n e)), Eq (s Int e))
-         => DecomposableGraph (Gr s n e) where
+instance (Eq e, Eq n) => DecomposableGraph (Gr n e) where
   match n g = do
     -- This context has all of the predecessors and successors for the
     -- node.
@@ -116,12 +39,13 @@ instance (LinkStorage s Int e, Eq (LNode (Gr s n e)), Eq (s Int e))
     -- Now we need to clear the affected pred/suc edges in the remaining
     -- graph
     let !g1 = IM.delete n (graphRepr g)
-        !g2 = clearPred g1 n s
-        !g3 = clearSucc g2 n p
+        !p' = IM.delete n (fromAdj p)
+        !s' = IM.delete n (fromAdj s)
+        !g2 = clearPred g1 n (IM.keys s')
+        !g3 = clearSucc g2 n (IM.keys p')
     return (c, Gr g3)
 
-instance (LinkStorage s Int e, Eq (LNode (Gr s n e)), Eq (s Int e))
-         => IncidenceGraph (Gr s n e) where
+instance (Eq e, Eq n) => IncidenceGraph (Gr n e) where
   lout g n =
     case context g n of
       Nothing -> []
@@ -133,8 +57,7 @@ instance (LinkStorage s Int e, Eq (LNode (Gr s n e)), Eq (s Int e))
       Just (Context _ (LNode src _) s) ->
         map (\(dst,_) -> Edge src dst) s
 
-instance (LinkStorage s Int e, Eq (LNode (Gr s n e)), Eq (s Int e))
-         => BidirectionalGraph (Gr s n e) where
+instance (Eq e, Eq n) => BidirectionalGraph (Gr n e) where
   linn g n =
     case context g n of
       Nothing -> []
@@ -146,89 +69,98 @@ instance (LinkStorage s Int e, Eq (LNode (Gr s n e)), Eq (s Int e))
       Just (Context p (LNode dst _) _) ->
         map (\(src,_) -> Edge src dst) p
 
-instance (LinkStorage s Int e, Eq (LNode (Gr s n e)), Eq (s Int e))
-         => AdjacencyGraph (Gr s n e) where
+instance (Eq e, Eq n) => AdjacencyGraph (Gr n e) where
   suc g n =
     case context g n of
       Nothing -> []
       Just (Context _ _ s) -> map fst s
 
-instance (LinkStorage s Int e, Eq (LNode (Gr s n e)), Eq (s Int e))
-         => BidirectionalAdjacencyGraph (Gr s n e) where
+instance (Eq e, Eq n) => BidirectionalAdjacencyGraph (Gr n e) where
   pre g n =
     case context g n of
       Nothing -> []
       Just (Context p _ _) -> map fst p
 
-instance (LinkStorage s Int e, Eq (LNode (Gr s n e)), Eq (s Int e))
-         => VertexListGraph (Gr s n e) where
+instance (Eq e, Eq n) => VertexListGraph (Gr n e) where
   labNodes = map contextNode . IM.elems . graphRepr
 
-instance (LinkStorage s Int e, Eq (LNode (Gr s n e)), Eq (s Int e))
-         => EdgeListGraph (Gr s n e) where
-  labEdges = concatMap extractEdges . IM.elems . graphRepr
-    where
-      extractEdges (Context' _ (LNode src _) s) = linkFold (mkEdge src) [] s
-      mkEdge src dst lbl acc = LEdge (Edge src dst) lbl : acc
+instance (Eq e, Eq n) => EdgeListGraph (Gr n e) where
+  labEdges (Gr g) = do
+    (node, Context' _ _ s) <- IM.toList g
+    (next, labels) <- IM.toList s
+    label <- labels
+    return $! LEdge (Edge node next) label
 
-instance (LinkStorage s Int e, Eq (LNode (Gr s n e)), Eq (s Int e))
-         => AdjacencyMatrix (Gr s n e) where
+instance (Eq e, Eq n) => AdjacencyMatrix (Gr n e) where
   edgeExists (Gr g) (Edge src dst) = do
     (Context' _ _ s) <- IM.lookup src g
-    (_, lbl) <- find ((==dst) . fst) (linkToList s)
+    (_, lbl) <- find ((==dst) . fst) (toAdj s)
     return lbl
 
-instance (LinkStorage s Int e, Eq (LNode (Gr s n e)), Eq (s Int e))
-         => MutableGraph (Gr s n e) where
+instance (Eq e, Eq n) => MutableGraph (Gr n e) where
   (Context p ln@(LNode nid _) s) & (Gr g) =
-    let c' = Context' (linkFromList p) ln (linkFromList s)
+    let c' = Context' (fromAdj p) ln (fromAdj s)
         !g1 = IM.insert nid c' g
         !g2 = addSucc g1 nid p
         !g3 = addPred g2 nid s
     in Gr g3
 
--- | FIXME: Convert these helpers to take collections of s n e and use
--- linkFold to modify the graph
-addSucc :: (LinkStorage s Int e)
-           => GraphRepr s n e
-           -> Node (Gr s n e)
-           -> [(Node (Gr s n e), EdgeLabel (Gr s n e))]
-           -> GraphRepr s n e
-addSucc g _ [] = g
-addSucc !g dst ((src, lbl) : rest) = addSucc g' dst rest
-  where
-    g' = IM.adjust f src g
-    f (Context' p ln s) = Context' p ln (linkInsert dst lbl s)
 
-addPred :: (LinkStorage s Int e)
-           => GraphRepr s n e
-           -> Node (Gr s n e)
-           -> [(Node (Gr s n e), EdgeLabel (Gr s n e))]
-           -> GraphRepr s n e
-addPred g _ [] = g
-addPred !g src ((dst, lbl) : rest) = addPred g' src rest
+-- Helpers
+toAdj :: IntMap [EdgeLabel (Gr a b)] -> Adj (Gr a b)
+toAdj = concatMap expand . IM.toList
   where
-    g' = IM.adjust f dst g
-    f (Context' p ln s) = Context' (linkInsert src lbl p) ln s
+    expand (n,ls) = map ((,) n) ls
 
-clearSucc :: (LinkStorage s Int e)
-             => GraphRepr s n e
-             -> Node (Gr s n e)
-             -> [(Node (Gr s n e), EdgeLabel (Gr s n e))]
-             -> GraphRepr s n e
-clearSucc g _ [] = g
-clearSucc !g dst ((src,_) : rest) = clearSucc g' dst rest
-  where
-    g' = IM.adjust f src g
-    f (Context' p ln s) = Context' p ln (linkDeleteAll dst s)
 
-clearPred :: (LinkStorage s Int e)
-             => GraphRepr s n e
-             -> Node (Gr s n e)
-             -> [(Node (Gr s n e), EdgeLabel (Gr s n e))]
-             -> GraphRepr s n e
-clearPred g _ [] = g
-clearPred !g src ((dst,_) : rest) = clearPred g' src rest
-  where
-    g' = IM.adjust f dst g
-    f (Context' p ln s) = Context' (linkDeleteAll src p) ln s
+fromAdj :: Adj (Gr a b) -> IntMap [EdgeLabel (Gr a b)]
+fromAdj = IM.fromListWith addLists . map (second return)
+
+-- A version of @++@ where order isn't important, so @xs ++ [x]@
+-- becomes @x:xs@.  Used when we have to have a function of type @[a]
+-- -> [a] -> [a]@ but one of the lists is just going to be a single
+-- element (and it isn't possible to tell which).
+addLists :: [a] -> [a] -> [a]
+addLists [a] as  =
+  let newl = a : as
+  in length newl `seq` newl
+addLists as  [a] =
+  let newl = a : as
+  in length newl `seq` newl
+addLists xs  ys  =
+  let newl = xs ++ ys
+  in length newl `seq` newl
+
+swap :: (a, b) -> (b, a)
+swap (a, b) = (b, a)
+
+addSucc :: GraphRep a b -> Int -> [(Int, b)] -> GraphRep a b
+addSucc g _ []              = g
+addSucc g v ((p, l) : rest) = addSucc g' v rest
+    where
+      !g' = IM.adjust f p g
+      f (Context' ps l' ss) = Context' ps l' (IM.insertWith addLists v [l] ss)
+
+
+addPred :: GraphRep a b -> Int -> [(Int, b)] -> GraphRep a b
+addPred g _ []              = g
+addPred g v ((s, l) : rest) = addPred g' v rest
+    where
+      !g' = IM.adjust f s g
+      f (Context' ps l' ss) = Context' (IM.insertWith addLists v [l] ps) l' ss
+
+
+clearSucc :: GraphRep a b -> Int -> [Int] -> GraphRep a b
+clearSucc g _ []       = g
+clearSucc g v (p:rest) = clearSucc g' v rest
+    where
+      !g' = IM.adjust f p g
+      f (Context' ps l ss) = Context' ps l (IM.delete v ss)
+
+
+clearPred :: GraphRep a b -> Int -> [Int] -> GraphRep a b
+clearPred g _ []       = g
+clearPred g v (s:rest) = clearPred g' v rest
+    where
+      !g' = IM.adjust f s g
+      f (Context' ps l ss) = Context' (IM.delete v ps) l ss
