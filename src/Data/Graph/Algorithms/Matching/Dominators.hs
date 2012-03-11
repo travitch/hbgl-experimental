@@ -13,6 +13,11 @@ import Data.Array
 import Data.Map ( Map )
 import qualified Data.Map as M
 
+iDom :: forall gr. (DecomposableGraph gr,
+                    BidirectionalAdjacencyGraph gr,
+                    VertexListGraph gr,
+                    Ord (Node gr)) =>
+        gr -> Node gr -> [(Node gr, Node gr)]
 iDom g root =
   map (\(a, b) -> (toNode ! a, toNode ! b)) (assocs result)
   where
@@ -27,11 +32,10 @@ dom g root =
   -- [(toNode ! i, dom' ! i) | i <- range (bounds dom')]
   x' ++ [(n, nodes') | n <- rest]
   where
---    t :: (IDom, ToNode (Node gr), FromNode (Node gr))
-    t@(idoms, toNode, fromNode) = idomWork g root
---    dom' :: Array Node' [Node gr]
-    dom' = getDom toNode idoms
---    nodes' :: [Node gr]
+    (idoms, toNode, fromNode) = idomWork g root
+    dom' = array (0, snd (bounds idoms)) ((0, [toNode ! 0]) :
+                     [(i, toNode ! i : dom' ! (idoms ! i)) | i <- range (bounds idoms)])
+
     nodes' = nodes g
     rest = M.keys (M.filter (-1 ==) fromNode)
 
@@ -42,14 +46,14 @@ dom g root =
 type Node' = Int
 type IDom = Array Node' Node'
 type Preds = Array Node' [Node']
-type ToNode n = Array Node' n
-type FromNode n = Map n Node'
+type ToNode gr = Array Node' (Node gr)
+type FromNode gr = Map (Node gr) Node'
 
 idomWork :: (DecomposableGraph gr,
              BidirectionalAdjacencyGraph gr,
              VertexListGraph gr,
              Ord (Node gr))
-            => gr -> Node gr -> (IDom, ToNode (Node gr), FromNode (Node gr))
+            => gr -> Node gr -> (IDom, ToNode gr, FromNode gr)
 idomWork g root =
   case null trees of
     True -> error "Dominators.idomWork: root not in graph"
@@ -73,11 +77,11 @@ intersect idom a b =
     EQ -> a
     GT -> intersect idom (idom ! a) b
 
-getDom :: (Graph gr) => ToNode (Node gr) -> IDom -> Array Node' [Node gr]
-getDom toNode idom =
-  let res = array (0, snd (bounds idom)) ((0, [toNode ! 0]) :
-                     [(i, toNode ! i : res ! (idom ! i)) | i <- range (bounds idom)])
-  in res
+-- getDom :: (Graph gr) => ToNode gr -> IDom -> Array Node' [Node gr]
+-- getDom toNode idom =
+--   let res = array (0, snd (bounds idom)) ((0, [toNode ! 0]) :
+--                      [(i, toNode ! i : res ! (idom ! i)) | i <- range (bounds idom)])
+--   in res
 
 numberTree :: Node' -> Tree a -> (Node', Tree Node')
 numberTree n (Node _ ts) =
