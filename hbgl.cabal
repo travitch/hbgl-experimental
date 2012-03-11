@@ -18,7 +18,7 @@ library
   default-language: Haskell2010
   build-depends: base > 3 && < 5, containers, deepseq,
                  unordered-containers <= 0.4.5, hashable,
-                 vector >= 0.9 && < 0.10, data-ordlist
+                 vector >= 0.9 && < 0.10, data-ordlist, array
   hs-source-dirs: src
   ghc-options: -Wall -funbox-strict-fields
   ghc-prof-options: -auto-all
@@ -28,7 +28,8 @@ library
                    Data.Graph.PatriciaTree,
                    Data.Graph.Algorithms.Basic,
                    Data.Graph.Algorithms.Marking.DFS,
-                   Data.Graph.Algorithms.Matching.DFS
+                   Data.Graph.Algorithms.Matching.DFS,
+                   Data.Graph.Algorithms.Matching.Dominators
   -- other-modules:
   -- build-depends:
 
