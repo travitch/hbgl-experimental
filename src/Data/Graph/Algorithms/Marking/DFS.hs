@@ -29,7 +29,7 @@ module Data.Graph.Algorithms.Marking.DFS (
   topsort,
   topsort',
   scc,
---  condense,
+  condense,
   reachable,
   components,
   noComponents,
@@ -38,7 +38,6 @@ module Data.Graph.Algorithms.Marking.DFS (
 
 import Data.Map ( Map, (!) )
 import qualified Data.Map as M
-import Data.Set ( Set )
 import qualified Data.Set as S
 import Data.HashSet ( HashSet )
 import qualified Data.HashSet as HS
@@ -217,10 +216,10 @@ scc g = map preorder (rdff (topsort g) g)
 reachable :: (InspectableGraph gr, Ord (Node gr)) => Node gr -> gr -> [Node gr]
 reachable v g = preorderF (dff [v] g)
 
-{-
+
 -- | Create the condensation of the graph.  There is only a single
 -- (unlabeled) edge between strongly-connected components.
-condense :: (DecomposableGraph gr1, AdjacencyGraph gr1, VertexListGraph gr1, BidirectionalGraph gr1,
+condense :: (AdjacencyGraph gr1, VertexListGraph gr1, BidirectionalGraph gr1,
              Graph gr2, Node gr2 ~ Int, Ord (Node gr1),
              EdgeLabel gr2 ~ (), NodeLabel gr2 ~ [LNode gr1])
             => gr1 -> gr2
@@ -228,9 +227,9 @@ condense g = mkGraph condensedNodes condensedEdges
   where
     sccIds = zip [0..] (scc g)
     nodeToSccMap = foldr buildSccIdMap M.empty sccIds
-    sccEdgePairs = foldr (collectSccEdges g nodeToSccMap) S.empty sccIds
+    sccEdgePairs = foldr (collectSccEdges g nodeToSccMap) HS.empty sccIds
     condensedNodes = map (sccToNode g) sccIds
-    condensedEdges = map (\(s, d) -> LEdge (Edge s d) ()) (S.toList sccEdgePairs)
+    condensedEdges = map (\(s, d) -> LEdge (Edge s d) ()) (HS.toList sccEdgePairs)
 
 buildSccIdMap :: (Ord k) => (a, [k]) -> Map k a -> Map k a
 buildSccIdMap (componentId, componentNodes) acc =
@@ -251,7 +250,7 @@ collectSccEdges g nodeToSccMap (sccId, ns) acc =
     addEdges n a =
       -- Successors to n in g that are not in the same SCC
       let origSuccs = filter ((/=sccId) . (nodeToSccMap!)) $ suc g n
-      in foldr (\origSuc s -> S.insert (sccId, nodeToSccMap ! origSuc) s) a origSuccs
+      in foldr (\origSuc s -> HS.insert (sccId, nodeToSccMap ! origSuc) s) a origSuccs
 
 sccToNode :: (NodeLabel gr2 ~ [LNode gr1], InspectableGraph gr1)
              => gr1 -> (Node gr2, [Node gr1]) -> LNode gr2
@@ -260,4 +259,3 @@ sccToNode g (sccId, ns) =
   where
     errMsg = "sccToNode: expected context not found"
     fromJust = maybe (error errMsg) id
--}
