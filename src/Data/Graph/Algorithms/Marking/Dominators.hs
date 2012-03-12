@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts, BangPatterns #-}
 module Data.Graph.Algorithms.Marking.Dominators (
   dom,
   iDom
@@ -74,14 +74,14 @@ intersect idom a b =
     GT -> intersect idom (idom ! a) b
 
 numberTree :: Node' -> Tree a -> (Node', Tree Node')
-numberTree n (Node _ ts) =
+numberTree !n !(Node _ ts) =
   (n', Node n ts')
   where
     (n', ts') = numberForest (n + 1) ts
 
 numberForest :: Node' -> [Tree a] -> (Node', [Tree Node'])
-numberForest n [] = (n, [])
-numberForest n (t:ts) =
+numberForest !n [] = (n, [])
+numberForest !n (t:ts) =
   (n'', t' : ts')
   where
     (n', t') = numberTree n t

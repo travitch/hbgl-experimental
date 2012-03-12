@@ -2,20 +2,37 @@
 module Data.Graph.PatriciaTree ( Gr ) where
 
 import Control.Arrow
-import Data.IntMap ( IntMap )
-import qualified Data.IntMap as IM
-import Data.List ( foldl', find )
+import Control.DeepSeq
+import Data.HashMap.Strict ( HashMap )
+import qualified Data.HashMap.Strict as IM
+import Data.List ( foldl', find, insert, sort )
 
 import Data.Graph.Interface
 
+type IntMap = HashMap Int
+
+newtype SList a = SList { unList :: [a] }
 newtype Gr a b = Gr { graphRepr :: GraphRep a b }
 type GraphRep a b = IntMap (Context' a b)
-data Context' a b = Context' !(IntMap [b]) !(LNode (Gr a b)) !(IntMap [b])
+data Context' a b = Context' !(IntMap (SList b)) !(LNode (Gr a b)) !(IntMap (SList b))
+                  deriving (Eq)
+
+instance (Ord a) => Eq (SList a) where
+  (SList l1) == (SList l2) = sort l1 == sort l2
+
+instance (NFData a) => NFData (SList a) where
+  rnf (SList l) = l `deepseq` ()
+
+instance (NFData a, NFData b) => NFData (Context' a b) where
+  rnf (Context' p l s) = p `deepseq` l `deepseq` s `deepseq` ()
+
+instance (NFData n, NFData e) => NFData (Gr n e) where
+  rnf (Gr g) = g `deepseq` ()
 
 contextNode :: Context' a b -> LNode (Gr a b)
 contextNode (Context' _ a _) = a
 
-instance (Eq e, Eq n) => Graph (Gr n e) where
+instance (Ord e, Eq n) => Graph (Gr n e) where
   type Node (Gr n e) = Int
   type NodeLabel (Gr n e) = n
   type EdgeLabel (Gr n e) = e
@@ -26,12 +43,12 @@ instance (Eq e, Eq n) => Graph (Gr n e) where
   empty = Gr IM.empty
   isEmpty = IM.null . graphRepr
 
-instance (Eq e, Eq n) => InspectableGraph (Gr n e) where
+instance (Ord e, Eq n) => InspectableGraph (Gr n e) where
   context g n = do
     Context' p ln s <- IM.lookup n (graphRepr g)
     return $! Context (toAdj p) ln (toAdj s)
 
-instance (Eq e, Eq n) => DecomposableGraph (Gr n e) where
+instance (Ord e, Eq n) => DecomposableGraph (Gr n e) where
   match n g = do
     -- This context has all of the predecessors and successors for the
     -- node.
@@ -45,7 +62,7 @@ instance (Eq e, Eq n) => DecomposableGraph (Gr n e) where
         !g3 = clearSucc g2 n (IM.keys p')
     return (c, Gr g3)
 
-instance (Eq e, Eq n) => IncidenceGraph (Gr n e) where
+instance (Ord e, Eq n) => IncidenceGraph (Gr n e) where
   lout g n =
     case context g n of
       Nothing -> []
@@ -57,7 +74,7 @@ instance (Eq e, Eq n) => IncidenceGraph (Gr n e) where
       Just (Context _ (LNode src _) s) ->
         map (\(dst,_) -> Edge src dst) s
 
-instance (Eq e, Eq n) => BidirectionalGraph (Gr n e) where
+instance (Ord e, Eq n) => BidirectionalGraph (Gr n e) where
   linn g n =
     case context g n of
       Nothing -> []
@@ -69,85 +86,93 @@ instance (Eq e, Eq n) => BidirectionalGraph (Gr n e) where
       Just (Context p (LNode dst _) _) ->
         map (\(src,_) -> Edge src dst) p
 
-instance (Eq e, Eq n) => AdjacencyGraph (Gr n e) where
+instance (Ord e, Eq n) => AdjacencyGraph (Gr n e) where
   suc g n =
     case context g n of
       Nothing -> []
       Just (Context _ _ s) -> map fst s
 
-instance (Eq e, Eq n) => BidirectionalAdjacencyGraph (Gr n e) where
+instance (Ord e, Eq n) => BidirectionalAdjacencyGraph (Gr n e) where
   pre g n =
     case context g n of
       Nothing -> []
       Just (Context p _ _) -> map fst p
 
-instance (Eq e, Eq n) => VertexListGraph (Gr n e) where
+instance (Ord e, Eq n) => VertexListGraph (Gr n e) where
   labNodes = map contextNode . IM.elems . graphRepr
 
-instance (Eq e, Eq n) => EdgeListGraph (Gr n e) where
+instance (Ord e, Eq n) => EdgeListGraph (Gr n e) where
   labEdges (Gr g) = do
     (node, Context' _ _ s) <- IM.toList g
     (next, labels) <- IM.toList s
-    label <- labels
+    label <- unList labels
     return $! LEdge (Edge node next) label
 
-instance (Eq e, Eq n) => AdjacencyMatrix (Gr n e) where
+instance (Ord e, Eq n) => AdjacencyMatrix (Gr n e) where
   edgeExists (Gr g) (Edge src dst) = do
     (Context' _ _ s) <- IM.lookup src g
     (_, lbl) <- find ((==dst) . fst) (toAdj s)
     return lbl
 
-instance (Eq e, Eq n) => MutableGraph (Gr n e) where
+instance (Ord e, Eq n) => MutableGraph (Gr n e) where
   (Context p ln@(LNode nid _) s) & (Gr g) =
     let c' = Context' (fromAdj p) ln (fromAdj s)
         !g1 = IM.insert nid c' g
         !g2 = addSucc g1 nid p
         !g3 = addPred g2 nid s
     in Gr g3
+  insNode n@(LNode nid _) (Gr g) = g' `seq` Gr g'
+    where
+      !g' = IM.insert nid (Context' IM.empty n IM.empty) g
+  insEdge (LEdge (Edge src dst) l) (Gr g) = g2 `seq` Gr g2
+    where
+      !g1 = IM.adjust (addSucc' l dst) src g
+      !g2 = IM.adjust (addPred' l src) dst g1
+
+addSucc' l dst !(Context' ps l' ss) =
+  Context' ps l' (IM.insertWith addLists dst (SList [l]) ss)
+addPred' l src !(Context' ps l' ss) =
+  Context' (IM.insertWith addLists src (SList [l]) ps) l' ss
+
+instance (Ord e, Eq n) => ComparableGraph (Gr n e) where
+  graphEqual (Gr g1) (Gr g2) = g1 == g2
+
 
 
 -- Helpers
-toAdj :: IntMap [EdgeLabel (Gr a b)] -> Adj (Gr a b)
+toAdj :: IntMap (SList (EdgeLabel (Gr a b))) -> Adj (Gr a b)
 toAdj = concatMap expand . IM.toList
   where
-    expand (n,ls) = map ((,) n) ls
+    expand (n, SList ls) = map ((,) n) ls
 
 
-fromAdj :: Adj (Gr a b) -> IntMap [EdgeLabel (Gr a b)]
-fromAdj = IM.fromListWith addLists . map (second return)
+fromAdj :: (Ord b) => Adj (Gr a b) -> IntMap (SList (EdgeLabel (Gr a b)))
+fromAdj = IM.fromListWith addLists . map (second (SList . return))
 
 -- A version of @++@ where order isn't important, so @xs ++ [x]@
 -- becomes @x:xs@.  Used when we have to have a function of type @[a]
 -- -> [a] -> [a]@ but one of the lists is just going to be a single
 -- element (and it isn't possible to tell which).
-addLists :: [a] -> [a] -> [a]
-addLists [a] as  =
-  let newl = a : as
-  in length newl `seq` newl
-addLists as  [a] =
-  let newl = a : as
-  in length newl `seq` newl
-addLists xs  ys  =
-  let newl = xs ++ ys
-  in length newl `seq` newl
+addLists :: (Ord a) => SList a -> SList a -> SList a
+addLists (SList [a]) (SList as)  = SList $ a : as
+addLists (SList as)  (SList [a]) = SList $ a : as
+addLists (SList xs)  (SList ys)  = SList $ xs ++ ys
 
-swap :: (a, b) -> (b, a)
-swap (a, b) = (b, a)
 
-addSucc :: GraphRep a b -> Int -> [(Int, b)] -> GraphRep a b
+addSucc :: (Ord b) => GraphRep a b -> Int -> [(Int, b)] -> GraphRep a b
 addSucc g _ []              = g
 addSucc g v ((p, l) : rest) = addSucc g' v rest
     where
       !g' = IM.adjust f p g
-      f (Context' ps l' ss) = Context' ps l' (IM.insertWith addLists v [l] ss)
+      f (Context' ps l' ss) = Context' ps l' (IM.insertWith addLists v (SList [l]) ss)
 
 
-addPred :: GraphRep a b -> Int -> [(Int, b)] -> GraphRep a b
+addPred :: (Ord b) => GraphRep a b -> Int -> [(Int, b)] -> GraphRep a b
 addPred g _ []              = g
 addPred g v ((s, l) : rest) = addPred g' v rest
     where
       !g' = IM.adjust f s g
-      f (Context' ps l' ss) = Context' (IM.insertWith addLists v [l] ps) l' ss
+      f (Context' ps l' ss) = Context' (IM.insertWith addLists v (SList [l]) ps) l' ss
 
 
 clearSucc :: GraphRep a b -> Int -> [Int] -> GraphRep a b
