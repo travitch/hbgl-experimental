@@ -28,6 +28,7 @@ library
                    Data.Graph.PatriciaTree,
                    Data.Graph.Algorithms.Basic,
                    Data.Graph.Algorithms.Marking.DFS,
+                   Data.Graph.Algorithms.Marking.Dominators,
                    Data.Graph.Algorithms.Matching.DFS,
                    Data.Graph.Algorithms.Matching.Dominators
   -- other-modules:
