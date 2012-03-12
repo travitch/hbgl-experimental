@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts #-}
 module Data.Graph.Algorithms.Matching.Dominators (
   dom,
   iDom
@@ -13,34 +13,33 @@ import Data.Array
 import Data.Map ( Map )
 import qualified Data.Map as M
 
-iDom :: forall gr. (DecomposableGraph gr,
-                    BidirectionalAdjacencyGraph gr,
-                    VertexListGraph gr,
-                    Ord (Node gr)) =>
+iDom :: (DecomposableGraph gr,
+         BidirectionalAdjacencyGraph gr,
+         VertexListGraph gr,
+         Ord (Node gr)) =>
         gr -> Node gr -> [(Node gr, Node gr)]
 iDom g root =
   map (\(a, b) -> (toNode ! a, toNode ! b)) (assocs result)
   where
     (result, toNode, _) = idomWork g root
 
-dom :: forall gr . (DecomposableGraph gr,
+dom :: (DecomposableGraph gr,
         BidirectionalAdjacencyGraph gr,
         VertexListGraph gr,
         Ord (Node gr))
        => gr -> Node gr -> [(Node gr, [Node gr])]
 dom g root =
-  -- [(toNode ! i, dom' ! i) | i <- range (bounds dom')]
-  x' ++ [(n, nodes') | n <- rest]
+  [(toNode ! i, dom' ! i) | i <- range (bounds dom')] ++
+    [(n, nodes') | n <- rest]
   where
     (idoms, toNode, fromNode) = idomWork g root
+    -- This is inlined (it was not in fgl) to work around a bit of a
+    -- problem with injectivity and associated types.
     dom' = array (0, snd (bounds idoms)) ((0, [toNode ! 0]) :
                      [(i, toNode ! i : dom' ! (idoms ! i)) | i <- range (bounds idoms)])
 
     nodes' = nodes g
     rest = M.keys (M.filter (-1 ==) fromNode)
-
-    x = assocs dom'
-    x' = map (\(ix, d) -> (toNode ! ix, d)) x
 
 
 type Node' = Int
@@ -76,12 +75,6 @@ intersect idom a b =
     LT -> intersect idom a (idom ! b)
     EQ -> a
     GT -> intersect idom (idom ! a) b
-
--- getDom :: (Graph gr) => ToNode gr -> IDom -> Array Node' [Node gr]
--- getDom toNode idom =
---   let res = array (0, snd (bounds idom)) ((0, [toNode ! 0]) :
---                      [(i, toNode ! i : res ! (idom ! i)) | i <- range (bounds idom)])
---   in res
 
 numberTree :: Node' -> Tree a -> (Node', Tree Node')
 numberTree n (Node _ ts) =
