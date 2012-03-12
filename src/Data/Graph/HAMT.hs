@@ -127,12 +127,6 @@ fromAdj :: (Hashable n, Eq n, Ord el)
 fromAdj = HM.fromListWith mergeLists . map (second return)
 
 mergeLists :: (Ord a) => [a] -> [a] -> [a]
-mergeLists [a] as =
-  let newl = insert a as
-  in length newl `seq` newl
-mergeLists as [a] =
-  let newl = insert a as
-  in length newl `seq` newl
 mergeLists xs ys =
   case length xs > length ys of
     True ->
