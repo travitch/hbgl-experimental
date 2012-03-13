@@ -34,7 +34,10 @@ module Data.Graph.Interface (
   outdeg',
   indeg',
   labNode',
-  neighbors'
+  neighbors',
+  -- * FGL compatibility
+  toNodeTuple,
+  toEdgeTuple
   ) where
 
 import Control.DeepSeq
@@ -397,3 +400,11 @@ labNode' (Context _ (LNode n l) _) = LNode n l
 -- successor.
 neighbors' :: (BidirectionalGraph gr) => Context gr -> [Node gr]
 neighbors' (Context p _ s) = map fst (p ++ s)
+
+-- | Convert a labeled node to an fgl-compatible equivalent
+toNodeTuple :: (Integral a, Node gr ~ a) => LNode gr -> (Int, NodeLabel gr)
+toNodeTuple (LNode n l) = (fromIntegral n, l)
+
+-- | Convert a labeled edge to an fgl-compatible equivalent
+toEdgeTuple :: (Integral a, Node gr ~ a) => LEdge gr -> (Int, Int, EdgeLabel gr)
+toEdgeTuple (LEdge (Edge src dst) l) = (fromIntegral src, fromIntegral dst, l)
