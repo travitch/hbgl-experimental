@@ -56,10 +56,10 @@ instance (Ord e, Eq n) => DecomposableGraph (Gr n e) where
     -- Now we need to clear the affected pred/suc edges in the remaining
     -- graph
     let !g1 = IM.delete n (graphRepr g)
-        !p' = IM.delete n (fromAdj p)
-        !s' = IM.delete n (fromAdj s)
-        !g2 = clearPred g1 n (IM.keys s')
-        !g3 = clearSucc g2 n (IM.keys p')
+        -- !p' = IM.delete n (fromAdj p)
+        -- !s' = IM.delete n (fromAdj s)
+        !g2 = clearPred g1 n (map fst s)
+        !g3 = clearSucc g2 n (map fst p)
     return (c, Gr g3)
 
 instance (Ord e, Eq n) => IncidenceGraph (Gr n e) where
