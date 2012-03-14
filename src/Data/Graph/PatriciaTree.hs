@@ -177,15 +177,18 @@ addPred g v ((s, l) : rest) = addPred g' v rest
 
 clearSucc :: GraphRep a b -> Int -> [Int] -> GraphRep a b
 clearSucc g _ []       = g
-clearSucc g v (p:rest) = clearSucc g' v rest
-    where
-      !g' = IM.adjust f p g
-      f (Context' ps l ss) = Context' ps l (IM.delete v ss)
+clearSucc g v ns = --(p:rest) = clearSucc g' v rest
+  foldl' (flip (IM.adjust f)) g ns
+  where
+      -- !g' = IM.adjust f p g
+    f (Context' ps l ss) = Context' ps l (IM.delete v ss)
 
 
 clearPred :: GraphRep a b -> Int -> [Int] -> GraphRep a b
 clearPred g _ []       = g
-clearPred g v (s:rest) = clearPred g' v rest
-    where
-      !g' = IM.adjust f s g
-      f (Context' ps l ss) = Context' (IM.delete v ps) l ss
+clearPred g v ns = --(s:rest) =
+  foldl' (flip (IM.adjust f)) g ns
+--  clearPred g' v rest
+  where
+--      !g' = IM.adjust f s g
+    f (Context' ps l ss) = Context' (IM.delete v ps) l ss
