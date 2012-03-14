@@ -56,8 +56,6 @@ instance (Ord e, Eq n) => DecomposableGraph (Gr n e) where
     -- Now we need to clear the affected pred/suc edges in the remaining
     -- graph
     let !g1 = IM.delete n (graphRepr g)
-        -- !p' = IM.delete n (fromAdj p)
-        -- !s' = IM.delete n (fromAdj s)
         !g2 = clearPred g1 n (map fst s)
         !g3 = clearSucc g2 n (map fst p)
     return (c, Gr g3)
@@ -177,18 +175,15 @@ addPred g v ((s, l) : rest) = addPred g' v rest
 
 clearSucc :: GraphRep a b -> Int -> [Int] -> GraphRep a b
 clearSucc g _ []       = g
-clearSucc g v ns = --(p:rest) = clearSucc g' v rest
+clearSucc g v ns =
   foldl' (flip (IM.adjust f)) g ns
   where
-      -- !g' = IM.adjust f p g
     f (Context' ps l ss) = Context' ps l (IM.delete v ss)
 
 
 clearPred :: GraphRep a b -> Int -> [Int] -> GraphRep a b
 clearPred g _ []       = g
-clearPred g v ns = --(s:rest) =
+clearPred g v ns =
   foldl' (flip (IM.adjust f)) g ns
---  clearPred g' v rest
   where
---      !g' = IM.adjust f s g
     f (Context' ps l ss) = Context' (IM.delete v ps) l ss
