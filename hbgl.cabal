@@ -81,3 +81,18 @@ test-suite MarkingDFSTests
                  test-framework,
                  test-framework-hunit,
                  test-framework-quickcheck2
+
+test-suite MatchingDFSTests
+  default-language: Haskell2010
+  type: exitcode-stdio-1.0
+  main-is: MatchingDFSTests.hs
+  hs-source-dirs: tests
+  ghc-options: -Wall
+  build-depends: base > 3 && < 5,
+                 containers,
+                 hbgl,
+                 fgl,
+                 HUnit, QuickCheck > 2.4,
+                 test-framework,
+                 test-framework-hunit,
+                 test-framework-quickcheck2
