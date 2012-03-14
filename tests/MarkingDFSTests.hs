@@ -42,7 +42,7 @@ main = defaultMain tests
 
 
 type CGraph = C.Gr Int () ()
-type TGraph = P.LGraph () ()
+type TGraph = P.Gr () ()
 
 data GraphPair = GP TGraph CGraph
 

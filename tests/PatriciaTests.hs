@@ -21,7 +21,7 @@ main = defaultMain tests
             , testGroup "CondenseTests" ctests
             ]
     iprops = [ testProperty "allNodesInGraph" prop_nodesLenIsNumNodes
-             --, testProperty "matchAndMergeAreDual" prop_matchAndMergeAreDual
+             , testProperty "matchAndMergeAreDual" prop_matchAndMergeAreDual
              , testProperty "gelemAndMatchAgree" prop_gelemAndMatchAgree
              , testProperty "prop_matchRemovesNodeRefs" prop_matchRemovesNodeRefs
              , testProperty "prop_insNodeWorks" prop_insNodeWorks
@@ -72,13 +72,13 @@ mkSG sz = do
 prop_nodesLenIsNumNodes :: SG -> Bool
 prop_nodesLenIsNumNodes g = noNodes g == length (nodes g)
 
-{-
+
 prop_matchAndMergeAreDual :: (NodeId, SG) -> Property
 prop_matchAndMergeAreDual (NID n, g) =
   gelem n g ==> case match n g of
     Nothing -> error (show n ++ " should be in g")
     Just (c, g') -> g `graphEqual` (c & g')
--}
+
 prop_gelemAndMatchAgree :: (NodeId, SG) -> Bool
 prop_gelemAndMatchAgree (NID n, g) =
   maybe False (const True) (match n g) == gelem n g
