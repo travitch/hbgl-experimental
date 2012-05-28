@@ -5,17 +5,33 @@ import Control.Arrow
 import Control.DeepSeq
 import Data.HashMap.Strict ( HashMap )
 import qualified Data.HashMap.Strict as IM
-import Data.List ( foldl', find, insert, sort )
+import Data.List ( foldl', find, sort )
 
+-- import Data.List.Strict ( List(..), sort )
 import Data.Graph.Interface
+
+import Debug.Trace
+debug = flip trace
 
 type IntMap = HashMap Int
 
+-- FIXME: Make this a strict list so we can legitimately make deepseq
+-- a noop
 newtype SList a = SList { unList :: [a] }
+                deriving (Show)
 newtype Gr a b = Gr { graphRepr :: GraphRep a b }
 type GraphRep a b = IntMap (Context' a b)
 data Context' a b = Context' !(IntMap (SList b)) !(LNode (Gr a b)) !(IntMap (SList b))
                   deriving (Eq)
+
+instance (Show a, Show b) => Show (Context' a b) where
+  show (Context' p n s) = concat ["Context' "
+                                 , show p
+                                 , " "
+                                 , show n
+                                 , " "
+                                 , show s
+                                 ]
 
 instance (Ord a) => Eq (SList a) where
   (SList l1) == (SList l2) = sort l1 == sort l2
@@ -24,10 +40,10 @@ instance (NFData a) => NFData (SList a) where
   rnf (SList l) = l `deepseq` ()
 
 instance (NFData a, NFData b) => NFData (Context' a b) where
-  rnf (Context' p l s) = p `deepseq` l `deepseq` s `deepseq` ()
+  rnf (Context' p l s) = () -- p `deepseq` l `deepseq` s `deepseq` ()
 
 instance (NFData n, NFData e) => NFData (Gr n e) where
-  rnf (Gr g) = g `deepseq` ()
+  rnf (Gr g) = () -- g `deepseq` ()
 
 contextNode :: Context' a b -> LNode (Gr a b)
 contextNode (Context' _ a _) = a
@@ -44,8 +60,8 @@ instance (Ord e, Eq n) => Graph (Gr n e) where
   isEmpty = IM.null . graphRepr
 
 instance (Ord e, Eq n) => InspectableGraph (Gr n e) where
-  context g n = do
-    Context' p ln s <- IM.lookup n (graphRepr g)
+  context (Gr g) n = do
+    Context' p ln s <- IM.lookup n g
     return $! Context (toAdj p) ln (toAdj s)
 
 instance (Ord e, Eq n) => DecomposableGraph (Gr n e) where
@@ -139,10 +155,9 @@ instance (Ord e, Eq n) => ComparableGraph (Gr n e) where
 
 -- Helpers
 toAdj :: IntMap (SList (EdgeLabel (Gr a b))) -> Adj (Gr a b)
-toAdj = concatMap expand . IM.toList
+toAdj = IM.foldrWithKey expand []
   where
-    expand (n, SList ls) = map ((,) n) ls
-
+    expand n (SList ls) acc = zip (repeat n) ls ++ acc
 
 fromAdj :: (Ord b) => Adj (Gr a b) -> IntMap (SList (EdgeLabel (Gr a b)))
 fromAdj = IM.fromListWith addLists . map (second (SList . return))
@@ -172,14 +187,12 @@ addPred g v ((s, l) : rest) = addPred g' v rest
       !g' = IM.adjust f s g
       f (Context' ps l' ss) = Context' (IM.insertWith addLists v (SList [l]) ps) l' ss
 
-
 clearSucc :: GraphRep a b -> Int -> [Int] -> GraphRep a b
 clearSucc g _ []       = g
 clearSucc g v ns =
   foldl' (flip (IM.adjust f)) g ns
   where
     f (Context' ps l ss) = Context' ps l (IM.delete v ss)
-
 
 clearPred :: GraphRep a b -> Int -> [Int] -> GraphRep a b
 clearPred g _ []       = g
