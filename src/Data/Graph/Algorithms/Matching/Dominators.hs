@@ -10,6 +10,7 @@ import Data.Graph.Algorithms.Matching.DFS
 import Data.Tree ( Tree(..) )
 import qualified Data.Tree as T
 import Data.Array
+import Data.List ( foldl' )
 import Data.Map ( Map )
 import qualified Data.Map as M
 
@@ -60,7 +61,7 @@ idomWork g root =
   where
     trees@(~[tree]) = dff [root] g
     (s, ntree) = numberTree 0 tree
-    idom0 = array (1, s-1) (tail $ treeEdges (-1) ntree)
+    idom0 = array (1, s-1) (treeEdges ntree)
     fromNode = M.unionWith const (M.fromList (zip (T.flatten tree) (T.flatten ntree))) (M.fromList (zip (nodes g) (repeat (-1))))
     toNode = array (0, s-1) (zip (T.flatten ntree) (T.flatten tree))
     preds = array (1, s-1) [(i, filter (/= -1) (map (fromNode M.!) (pre g (toNode ! i)))) | i <- [1..s-1]]
@@ -90,8 +91,13 @@ numberForest !n (t:ts) =
     (n', t') = numberTree n t
     (n'', ts') = numberForest n' ts
 
-treeEdges :: a -> Tree a -> [(a, a)]
-treeEdges a (Node b ts) = (b, a) : concatMap (treeEdges b) ts
+treeEdges :: Tree a -> [(a, a)]
+treeEdges = go []
+  where
+    go acc (Node a ts) =
+      let es = map (\t -> (rootLabel t, a)) ts
+      in foldl' go (es ++ acc) ts
+
 
 fixEq :: (Eq a) => (a -> a) -> a -> a
 fixEq f v | v' == v = v
