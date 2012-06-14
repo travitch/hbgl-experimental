@@ -1,4 +1,31 @@
 {-# LANGUAGE TypeFamilies, BangPatterns #-}
+-- | This is a graph implementation similar to the PatriciaTree from
+-- fgl.  It is optimized for *traversal* instead of fast creation
+-- (creation is still reasonably fast).  The specific use case is to
+-- make DFS traversals (which rely on many repeated calls to 'match')
+-- efficient.
+--
+-- The key change is that matching (removing) a node from the graph
+-- does not update successor and predecessor lists.  These updates
+-- were taking most of the time and memory in client applications.
+-- Instead, removed nodes are added to a hash set (and are removed
+-- from the outer hash table).  Match now only makes two allocations:
+-- a new hash table without the deleted node and an updated deleted
+-- nodes set.
+--
+-- The deleted node set is used to filter the results of suc/pre
+-- operations (and other relevant operations) to maintain correctness.
+-- The downside is that the deleted edges live on in the adjacency
+-- lists.  For that reason, this structure is mostly only suitable for
+-- graphs that are built up but do not have many edges permanently
+-- removed (just transiently removed for match traversals).
+--
+-- A key change in the internal representation is a move from IntMaps
+-- to plain lists of pairs to store adjacency information.  This is
+-- more compact (which is beneficial to large graphs), but it does
+-- slow down insertions somewhat since the lists are treated as
+-- ordered sets, so insertions are linear in the number of
+-- adjacencies, rather than logarithmic.
 module Data.Graph.LazyHAMT ( Gr ) where
 
 import Control.DeepSeq
