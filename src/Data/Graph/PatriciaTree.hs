@@ -8,7 +8,7 @@ import qualified Data.HashMap.Strict as IM
 import Data.List ( foldl', find, sort )
 
 -- import Data.List.Strict ( List(..), sort )
-import Data.Graph.Interface
+import Data.Graph.Interface hiding ( contextNode )
 
 import Debug.Trace
 debug = flip trace
@@ -194,6 +194,7 @@ clearSucc g v ns =
   where
     f (Context' ps l ss) = Context' ps l (IM.delete v ss)
 
+-- | Remove @v@ from the predecessor list of each node in @ns@
 clearPred :: GraphRep a b -> Int -> [Int] -> GraphRep a b
 clearPred g _ []       = g
 clearPred g v ns =

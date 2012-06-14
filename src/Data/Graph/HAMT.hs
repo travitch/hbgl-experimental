@@ -8,7 +8,7 @@ import Data.HashMap.Strict ( HashMap )
 import qualified Data.HashMap.Strict as HM
 import Data.List ( find, foldl', insert )
 
-import Data.Graph.Interface
+import Data.Graph.Interface hiding ( contextNode )
 
 newtype Gr n nl el = Gr { graphRepr :: GraphRep n nl el }
 type GraphRep n nl el = HashMap n (Context' n nl el)

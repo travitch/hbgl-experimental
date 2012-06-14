@@ -18,7 +18,7 @@ library
   default-language: Haskell2010
   build-depends: base > 3 && < 5, containers, deepseq,
                  unordered-containers >= 0.2.1.0, hashable,
-                 vector >= 0.9 && < 0.10, array
+                 vector >= 0.9 && < 0.10, array, data-ordlist
   hs-source-dirs: src
   ghc-options: -Wall -funbox-strict-fields
   ghc-prof-options: -auto-all
@@ -26,6 +26,7 @@ library
                    Data.Graph.Compact,
                    Data.Graph.HAMT,
                    Data.Graph.PatriciaTree,
+                   Data.Graph.LazyHAMT,
                    Data.Graph.Algorithms.Basic,
                    Data.Graph.Algorithms.Marking.DFS,
                    Data.Graph.Algorithms.Marking.Dominators,

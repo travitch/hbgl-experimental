@@ -5,7 +5,7 @@ module Data.Graph.Interface (
   LEdge(..),
   Edge(..),
   Adj,
-  Context(Context),
+  Context(..),
   InspectableGraph(..),
   DecomposableGraph(..),
   IncidenceGraph(..),
@@ -96,6 +96,10 @@ data Context gr = Context { contextIncomingLinks :: Adj gr
                           , contextNode :: LNode gr
                           , contextOutgoingLinks :: Adj gr
                           }
+
+instance (Eq (NodeLabel gr), Eq (EdgeLabel gr), Eq (Node gr)) => Eq (Context gr) where
+  (Context ps1 ln1 ss1) == (Context ps2 ln2 ss2) =
+    ps1 == ps2 && ln1 == ln2 && ss1 == ss2
 
 class Graph gr where
   type Node gr

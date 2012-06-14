@@ -11,7 +11,7 @@ import Data.Ord ( comparing )
 import Data.Vector ( Vector, (!) )
 import qualified Data.Vector as V
 
-import Data.Graph.Interface
+import Data.Graph.Interface hiding ( contextNode )
 
 -- | Adjacency information.  This includes the *index into the vector*
 -- of an adjacent node, along with the label of the edge.
