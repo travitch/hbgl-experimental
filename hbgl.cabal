@@ -17,8 +17,9 @@ cabal-version:       >=1.10
 library
   default-language: Haskell2010
   build-depends: base > 3 && < 5, containers, deepseq,
-                 unordered-containers >= 0.2.1.0, hashable,
-                 vector >= 0.9 && < 0.10, array, data-ordlist
+                 unordered-containers >= 0.2.1.1, hashable,
+                 vector >= 0.9 && < 0.10, array, data-ordlist,
+                 heaps
   hs-source-dirs: src
   ghc-options: -Wall -funbox-strict-fields
   ghc-prof-options: -auto-all
@@ -31,7 +32,8 @@ library
                    Data.Graph.Algorithms.Marking.DFS,
                    Data.Graph.Algorithms.Marking.Dominators,
                    Data.Graph.Algorithms.Matching.DFS,
-                   Data.Graph.Algorithms.Matching.Dominators
+                   Data.Graph.Algorithms.Matching.Dominators,
+                   Data.Graph.Algorithms.Matching.SP
   -- other-modules:
   -- build-depends:
 
