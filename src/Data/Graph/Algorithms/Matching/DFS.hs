@@ -14,6 +14,7 @@ module Data.Graph.Algorithms.Matching.DFS (
   dffWith,
   dffWith',
   xdfsWith,
+  xdfsWithM,
   xdfWith,
   xdffWith,
   -- * Undirected DFS
@@ -55,17 +56,35 @@ fixNodes f g = f (nodes g) g
 
 -- | General depth-first search
 xdfsWith :: (DecomposableGraph gr)
-                  => (Context gr -> [Node gr])
-                  -> (Context gr -> c)
-                  -> [Node gr]
-                  -> gr
-                  -> [c]
+            => (Context gr -> [Node gr])
+            -> (Context gr -> c)
+            -> [Node gr]
+            -> gr
+            -> [c]
 xdfsWith _ _ [] _ = []
 xdfsWith _ _ _ g | isEmpty g = []
 xdfsWith d f (v:vs) g =
   case match v g of
     Just (c, g') -> f c : xdfsWith d f (d c ++ vs) g'
     Nothing -> xdfsWith d f vs g
+
+xdfsWithM :: (DecomposableGraph gr, Monad m)
+             => (Context gr -> m [Node gr])
+             -> (Context gr -> m c)
+             -> [Node gr]
+             -> gr
+             -> m [c]
+xdfsWithM d f = xdfsWithMWorker []
+  where
+    xdfsWithMWorker acc [] _ = return acc
+    xdfsWithMWorker acc _ g | isEmpty g = return acc
+    xdfsWithMWorker acc (v:vs) g =
+      case match v g of
+        Nothing -> xdfsWithMWorker acc vs g
+        Just (c, g') -> do
+          reached <- f c
+          nowReachable <- d c
+          xdfsWithMWorker (reached : acc) (nowReachable ++ vs) g'
 
 dfsWith :: (DecomposableGraph gr)
            => (Context gr -> c)

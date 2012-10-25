@@ -197,12 +197,8 @@ class (Graph gr) => EdgeListGraph gr where
   noEdges = length . labEdges
 
 -- | Graphs with efficient implementations of adjacency tests.
-class (Graph gr) => AdjacencyMatrix gr where
+class (Graph gr, InspectableGraph gr) => AdjacencyMatrix gr where
   edgeExists :: gr -> Edge gr -> Maybe (EdgeLabel gr)
-
--- | This instance provides a default implementation for graphs that
--- can be inspected (defined in terms of 'context').
-instance (InspectableGraph gr) => AdjacencyMatrix gr where
   edgeExists g e = do
     c <- context g src
     link <- F.find ((==dst) . fst) (F.toList (lsuc' c))

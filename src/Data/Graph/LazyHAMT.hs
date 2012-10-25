@@ -39,12 +39,10 @@ import Data.Monoid
 
 import Data.Graph.Interface
 
-type IntMap = HashMap Int
-
-data Gr a b = Gr { graphRepr :: GraphRep a b
-                 , deletedNodes :: HashSet Int
+type GraphRep a b = HashMap Int (Context (Gr a b))
+data Gr a b = Gr { graphRepr :: !(GraphRep a b)
+                 , deletedNodes :: !(HashSet Int)
                  }
-type GraphRep a b = IntMap (Context (Gr a b))
 
 instance (NFData n, NFData e) => NFData (Gr n e) where
   rnf (Gr _ _) = () -- g `deepseq` ()
