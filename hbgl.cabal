@@ -17,33 +17,32 @@ cabal-version:       >=1.10
 library
   default-language: Haskell2010
   build-depends: base > 3 && < 5, containers, deepseq,
-                 unordered-containers, hashable,
-                 vector >= 0.9 && < 0.10, array, data-ordlist,
-                 heaps
+                 unordered-containers, hashable, heaps
   hs-source-dirs: src
   ghc-options: -Wall -funbox-strict-fields
   ghc-prof-options: -auto-all
   exposed-modules: Data.Graph.Interface,
-                   Data.Graph.Compact,
-                   Data.Graph.HAMT,
-                   Data.Graph.PatriciaTree,
-                   Data.Graph.LazyHAMT,
-                   Data.Graph.Algorithms.Basic,
-                   Data.Graph.Algorithms.Marking.DFS,
-                   Data.Graph.Algorithms.Marking.Dominators,
-                   Data.Graph.Algorithms.Matching.DFS,
-                   Data.Graph.Algorithms.Matching.Dominators,
-                   Data.Graph.Algorithms.Matching.SP
+                   Data.Graph.PatriciaTree
+                   -- Data.Graph.Compact,
+                   -- Data.Graph.HAMT,
+                   -- Data.Graph.PatriciaTree,
+                   -- Data.Graph.LazyHAMT,
+                   -- Data.Graph.Algorithms.Basic,
+                   -- Data.Graph.Algorithms.Marking.DFS,
+                   -- Data.Graph.Algorithms.Marking.Dominators,
+                   -- Data.Graph.Algorithms.Matching.DFS,
+                   -- Data.Graph.Algorithms.Matching.Dominators,
+                   -- Data.Graph.Algorithms.Matching.SP
   -- other-modules:
   -- build-depends:
 
-executable TrivialGraphTest
-  default-language: Haskell2010
-  build-depends: base > 3 && < 5, hbgl
-  hs-source-dirs: tests
-  ghc-options: -Wall
-  ghc-prof-options: -auto-all
-  main-is: Trivial.hs
+-- executable TrivialGraphTest
+--   default-language: Haskell2010
+--   build-depends: base > 3 && < 5, hbgl
+--   hs-source-dirs: tests
+--   ghc-options: -Wall
+--   ghc-prof-options: -auto-all
+--   main-is: Trivial.hs
 
 test-suite PatriciaTests
   default-language: Haskell2010

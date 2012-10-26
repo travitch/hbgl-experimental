@@ -3,66 +3,35 @@ module Data.Graph.PatriciaTree ( Gr ) where
 
 import Control.Arrow
 import Control.DeepSeq
-import Data.HashMap.Strict ( HashMap )
-import qualified Data.HashMap.Strict as IM
-import Data.List ( foldl', find, sort )
+import Data.IntMap ( IntMap )
+import qualified Data.IntMap as IM
+import Data.List ( foldl', find )
+import Data.Maybe ( fromMaybe )
+import Data.Graph.Interface
 
--- import Data.List.Strict ( List(..), sort )
-import Data.Graph.Interface hiding ( contextNode )
+-- import Debug.Trace
+-- debug = flip trace
 
-import Debug.Trace
-debug = flip trace
+data Ctx a b = Ctx !(IntMap b) a !(IntMap b)
+newtype Gr a b = Gr { graphRepr :: IntMap (Ctx a b) }
 
-type IntMap = HashMap Int
 
--- FIXME: Make this a strict list so we can legitimately make deepseq
--- a noop
-newtype SList a = SList { unList :: [a] }
-                deriving (Show)
-newtype Gr a b = Gr { graphRepr :: GraphRep a b }
-type GraphRep a b = IntMap (Context' a b)
-data Context' a b = Context' !(IntMap (SList b)) !(LNode (Gr a b)) !(IntMap (SList b))
-                  deriving (Eq)
-
-instance (Show a, Show b) => Show (Context' a b) where
-  show (Context' p n s) = concat ["Context' "
-                                 , show p
-                                 , " "
-                                 , show n
-                                 , " "
-                                 , show s
-                                 ]
-
-instance (Ord a) => Eq (SList a) where
-  (SList l1) == (SList l2) = sort l1 == sort l2
-
-instance (NFData a) => NFData (SList a) where
-  rnf (SList l) = l `deepseq` ()
-
-instance (NFData a, NFData b) => NFData (Context' a b) where
-  rnf (Context' p l s) = () -- p `deepseq` l `deepseq` s `deepseq` ()
-
-instance (NFData n, NFData e) => NFData (Gr n e) where
-  rnf (Gr g) = () -- g `deepseq` ()
-
-contextNode :: Context' a b -> LNode (Gr a b)
-contextNode (Context' _ a _) = a
-
-instance (Ord e, Eq n) => Graph (Gr n e) where
-  type Node (Gr n e) = Int
-  type NodeLabel (Gr n e) = n
+instance Graph (Gr n e) where
+  type VertexLabel (Gr n e) = n
   type EdgeLabel (Gr n e) = e
 
-  mkGraph ns es =
-    let g0 = insNodes ns empty
-    in foldl' (flip insEdge) g0 es
   empty = Gr IM.empty
   isEmpty = IM.null . graphRepr
 
-instance (Ord e, Eq n) => InspectableGraph (Gr n e) where
-  context (Gr g) n = do
-    Context' p ln s <- IM.lookup n g
-    return $! Context (toAdj p) ln (toAdj s)
+instance InspectableGraph (Gr n e) where
+  context (Gr g) (V v) = do
+    Ctx p l s <- IM.lookup v g
+    return $! Context (toAdj p) (V v) l (toAdj s)
+
+toAdj :: IntMap b -> [(Vertex, b)]
+toAdj = map (first V) . IM.toList
+
+{-
 
 instance (Ord e, Eq n) => DecomposableGraph (Gr n e) where
   match n g = do
@@ -75,42 +44,37 @@ instance (Ord e, Eq n) => DecomposableGraph (Gr n e) where
         !g2 = clearPred g1 n (map fst s)
         !g3 = clearSucc g2 n (map fst p)
     return (c, Gr g3)
+-}
 
-instance (Ord e, Eq n) => IncidenceGraph (Gr n e) where
-  lout g n =
-    case context g n of
-      Nothing -> []
-      Just (Context _ (LNode src _) s) ->
-        map (\(dst,lbl) -> LEdge (Edge src dst) lbl) s
-  out g n =
-    case context g n of
-      Nothing -> []
-      Just (Context _ (LNode src _) s) ->
-        map (\(dst,_) -> Edge src dst) s
+instance IncidenceGraph (Gr n e) where
+  out g v = fromMaybe [] $ do
+    Context _ src _ s <- context g v
+    return $ map (toEdge src) s
+    where
+      toEdge src (dst, lbl) = Edge src dst lbl
 
-instance (Ord e, Eq n) => BidirectionalGraph (Gr n e) where
-  linn g n =
-    case context g n of
-      Nothing -> []
-      Just (Context p (LNode dst _) _) ->
-        map (\(src, lbl) -> LEdge (Edge src dst) lbl) p
-  inn g n =
-    case context g n of
-      Nothing -> []
-      Just (Context p (LNode dst _) _) ->
-        map (\(src,_) -> Edge src dst) p
+instance BidirectionalGraph (Gr n e) where
+  inn g v = fromMaybe [] $ do
+    Context p dst _ _ <- context g v
+    return $ map (toEdge dst) p
+    where
+      toEdge dst (src, lbl) = Edge src dst lbl
 
-instance (Ord e, Eq n) => AdjacencyGraph (Gr n e) where
-  suc g n =
-    case context g n of
-      Nothing -> []
-      Just (Context _ _ s) -> map fst s
+instance AdjacencyGraph (Gr n e) where
+  foldSuc f seed (Gr gr) (V v) = fromMaybe seed $ do
+    Ctx _ _ s <- IM.lookup v gr
+    return $ IM.foldrWithKey' f' seed s
+    where
+      f' k = f (V k)
 
-instance (Ord e, Eq n) => BidirectionalAdjacencyGraph (Gr n e) where
-  pre g n =
-    case context g n of
-      Nothing -> []
-      Just (Context p _ _) -> map fst p
+instance BidirectionalAdjacencyGraph (Gr n e) where
+  foldPre f seed (Gr gr) (V v) = fromMaybe seed $ do
+    Ctx p _ _ <- IM.lookup v gr
+    return $ IM.foldrWithKey' f' seed p
+    where
+      f' k = f (V k)
+
+{-
 
 instance (Ord e, Eq n) => VertexListGraph (Gr n e) where
   labNodes = map contextNode . IM.elems . graphRepr
@@ -201,3 +165,4 @@ clearPred g v ns =
   foldl' (flip (IM.adjust f)) g ns
   where
     f (Context' ps l ss) = Context' (IM.delete v ps) l ss
+-}
