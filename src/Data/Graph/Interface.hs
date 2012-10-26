@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilies, FlexibleContexts #-}
 module Data.Graph.Interface (
   Vertex(..),
   Edge(..),
@@ -138,7 +138,7 @@ class (Graph gr) => VertexListGraph gr where
   vertices :: gr -> [Vertex]
   vertices = map fst . labeledVertices
   numVertices :: gr -> Int
-  numVertices = length . labeledVertices
+  numVertices = length . vertices
 
 -- | Graphs with efficient access to all of the edges in the graph.
 -- Minimum required implementation: @edges@.
@@ -166,42 +166,32 @@ class (Graph gr) => AdjacencyMatrix gr where
 -- default implementations of the graph modification functions based
 -- on it.
 class (Graph gr) => MutableGraph gr where
-  -- | Add the list of labeled edges to the graph.  The referenced
-  -- nodes *MUST* exist in the graph.  If this condition is not met,
-  -- behavior is undefined (recommended behavior: raise an error)
-  -- insertEdges :: [LEdge gr] -> gr -> gr
-  -- insertEdges es g = foldr insertEdge g es
-
-  -- | Add the list of labeled nodes to the graph.  Inserting an
-  -- existing node with a different label should change the label in
-  -- the graph.
-  -- insNodes :: [(Vertex, VertexLabel gr)] -> gr -> gr
-  -- insNodes ns g = foldr insNode g ns
-
   -- | Insert an edge into the graph.  Both the source and destination
-  -- nodes of the edge must exist in the graph (otherwise an error
-  -- will be raised).
-  insertEdge :: Vertex -> Vertex -> EdgeLabel gr -> gr -> (gr, Edge gr)
+  -- vertices of the edge must exist in the graph (otherwise the
+  -- function returns Nothing).  If the edge already exists in the
+  -- graph and the graph is not a multi graph, the function also
+  -- returns Nothing.  Exact behavior on duplicate edges is up to
+  -- the implementation?
+  insertEdge :: Vertex -> Vertex -> EdgeLabel gr -> gr -> Maybe (gr, Edge gr)
 
+  -- | Add a vertex to the graph.  This function always succeeds.
   insertVertex :: VertexLabel gr -> gr -> (gr, Vertex)
 
-  -- | Delete a node from the graph.  It is an error if the node
-  -- does not exist in the graph.
+  -- | Delete a node from the graph.
   removeVertex :: Vertex -> gr -> gr
 
   -- | Remove all of the incoming and outgoing edges from a node (but
-  -- leave the node itself in the graph).  It is an error if the node
-  -- does not exist in the graph.
+  -- leave the node itself in the graph).
   clearVertex :: Vertex -> gr -> gr
 
   -- | Remove the edge referenced by the given descriptor (obtained
   -- from insertEdge)
-  removeEdge :: Edge gr -> gr -> gr
+  removeEdge :: (Eq (EdgeLabel gr)) => Edge gr -> gr -> gr
 
   -- | Remove all edges with the given endpoints (regardless of label)
   removeEdges :: Vertex -> Vertex -> gr -> gr
 
-  removeEdgesWithLabel :: Vertex -> Vertex -> EdgeLabel gr -> gr -> gr
+--  removeEdgesWithLabel :: Vertex -> Vertex -> EdgeLabel gr -> gr -> gr
 
 
 
