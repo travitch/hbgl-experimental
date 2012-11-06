@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeFamilies, FlexibleContexts #-}
 module Data.Graph.Interface (
-  Vertex(..),
+  Vertex,
   Edge(..),
   Graph(..),
   Adj,
@@ -15,6 +15,7 @@ module Data.Graph.Interface (
   VertexListGraph(..),
   EdgeListGraph(..),
   MutableGraph(..),
+  MarksVertices(..),
   -- * Graph traversals
   ufold,
   -- gmap,
@@ -34,18 +35,12 @@ module Data.Graph.Interface (
   ) where
 
 import Control.DeepSeq
+import Control.Monad.ST
 import qualified Data.Foldable as F
 import Data.Hashable
 import Data.Maybe ( fromMaybe, isJust )
 
-newtype Vertex = V Int
-               deriving (Eq, Ord)
-
-instance Hashable Vertex where
-  hash (V v) = v
-
-instance NFData Vertex where
-  rnf (V v) = rnf v
+type Vertex = Int
 
 data Edge gr = Edge { edgeSource :: Vertex
                     , edgeTarget :: Vertex
@@ -59,9 +54,15 @@ data Context gr = Context { lpre' :: Adj gr
                           , lsuc' :: Adj gr
                           }
 
-class Graph gr where
+class MarksVertices (k :: * -> *) where
+  newMarker :: Int -> ST s (k s)
+  markVertex :: k s -> Vertex -> ST s ()
+  isVertexMarked :: k s -> Vertex -> ST s Bool
+
+class MarksVertices (VertexMarker gr) => Graph gr where
   type EdgeLabel gr
   type VertexLabel gr
+  type VertexMarker gr :: * -> *
 
   isEmpty :: gr -> Bool
   empty :: gr
@@ -160,11 +161,7 @@ class (Graph gr) => AdjacencyMatrix gr where
 
 -- | The singular variants have default implementations.  They are
 -- class members so that they can be overridden with more efficient
--- implementations if desired.  Minimal definition: '(&)'
---
--- FIXME: Provide a very precise definition for (&) and provide
--- default implementations of the graph modification functions based
--- on it.
+-- implementations if desired.
 class (Graph gr) => MutableGraph gr where
   -- | Insert an edge into the graph.  Both the source and destination
   -- vertices of the edge must exist in the graph (otherwise the
@@ -174,8 +171,9 @@ class (Graph gr) => MutableGraph gr where
   -- the implementation?
   insertEdge :: Vertex -> Vertex -> EdgeLabel gr -> gr -> Maybe (gr, Edge gr)
 
-  -- | Add a vertex to the graph.  This function always succeeds.
-  insertVertex :: VertexLabel gr -> gr -> (gr, Vertex)
+  -- | Add a vertex to the graph.  This function fails if the vertex
+  -- already exists in the graph.
+  insertVertex :: Vertex -> VertexLabel gr -> gr -> Maybe gr
 
   -- | Delete a node from the graph.
   removeVertex :: Vertex -> gr -> gr

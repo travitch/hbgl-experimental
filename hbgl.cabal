@@ -17,12 +17,15 @@ cabal-version:       >=1.10
 library
   default-language: Haskell2010
   build-depends: base > 3 && < 5, containers, deepseq,
-                 unordered-containers, hashable, heaps
+                 unordered-containers, hashable, heaps,
+                 hashtables, vector
   hs-source-dirs: src
   ghc-options: -Wall -funbox-strict-fields
   ghc-prof-options: -auto-all
   exposed-modules: Data.Graph.Interface,
-                   Data.Graph.PatriciaTree
+                   Data.Graph.PatriciaTree,
+                   Data.Graph.Marker.Dense,
+                   Data.Graph.Marker.Sparse
                    -- Data.Graph.Compact,
                    -- Data.Graph.HAMT,
                    -- Data.Graph.PatriciaTree,
