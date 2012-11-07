@@ -1,16 +1,16 @@
 {-# LANGUAGE TypeFamilies, ScopedTypeVariables #-}
 module Data.Graph.Algorithms.Basic (
    -- * Basic graph operations
-  grev,
-  undir,
-  unlab,
-  gsel,
+--  grev,
+--  undir,
+--  unlab,
+--  gsel,
   -- * Filtering operations
-  efilter,
-  elfilter,
+  -- efilter,
+  -- elfilter,
   -- * Simple predicates
-  hasLoop,
-  isSimple,
+  -- hasLoop,
+  -- isSimple,
   -- * Tree operations
   postorder,
   postorderF,
@@ -21,7 +21,7 @@ module Data.Graph.Algorithms.Basic (
 import Data.List ( nub )
 import Data.Tree
 import Data.Graph.Interface
-
+{-
 -- | Reverse the directions of all of the edges in the graph
 grev :: (MutableGraph gr, VertexListGraph gr) => gr -> gr
 grev = gmap (\(Context p ln s) -> Context s ln p)
@@ -82,6 +82,7 @@ hasLoop = not . null . (gsel (\c -> node' c `elem` suc' c))
 -- | Inverse of 'hasLoop'
 isSimple :: (VertexListGraph gr, InspectableGraph gr) => gr -> Bool
 isSimple = not . hasLoop
+-}
 
 -- what is gfold
 

@@ -6,6 +6,7 @@ module Data.Graph.PatriciaTree (
 
 import Data.IntMap ( IntMap )
 import qualified Data.IntMap as IM
+import Data.List ( foldl' )
 import Data.Maybe ( fromMaybe )
 import Data.Monoid
 
@@ -26,6 +27,11 @@ instance (MarksVertices k) => Graph (Gr k n e) where
 
   empty = Gr IM.empty
   isEmpty = IM.null . graphRepr
+  mkGraph ns es = foldl' addEdge g0 es
+    where
+      addVertex acc (v, lbl) = fromMaybe acc (insertVertex v lbl acc)
+      addEdge acc (Edge src dst lbl) = maybe acc fst (insertEdge src dst lbl acc)
+      g0 = foldl' addVertex empty ns
 
 instance (MarksVertices k) => InspectableGraph (Gr k n e) where
   context (Gr g) v = do

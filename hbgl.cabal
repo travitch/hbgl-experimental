@@ -23,7 +23,10 @@ library
   ghc-options: -Wall -funbox-strict-fields
   ghc-prof-options: -auto-all
   exposed-modules: Data.Graph.Interface,
+                   Data.Graph.ImmutableDigraph,
                    Data.Graph.PatriciaTree,
+                   Data.Graph.Algorithms.Basic,
+                   Data.Graph.Algorithms.DFS,
                    Data.Graph.Marker.Dense,
                    Data.Graph.Marker.Sparse
                    -- Data.Graph.Compact,

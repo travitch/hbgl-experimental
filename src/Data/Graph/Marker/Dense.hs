@@ -1,8 +1,8 @@
 module Data.Graph.Marker.Dense ( DenseMarker ) where
 
 import Data.Bits
-import Data.Vector.Mutable ( STVector )
-import qualified Data.Vector.Mutable as V
+import Data.Vector.Unboxed.Mutable ( STVector )
+import qualified Data.Vector.Unboxed.Mutable as V
 import Data.Word ( Word64 )
 
 import Data.Graph.Interface

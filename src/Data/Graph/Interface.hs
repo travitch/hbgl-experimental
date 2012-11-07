@@ -28,7 +28,7 @@ module Data.Graph.Interface (
   inn',
   outdeg',
   indeg',
-  neighbors',
+  neighbors'
   -- * FGL compatibility
   -- toNodeTuple,
   -- toEdgeTuple
@@ -66,6 +66,7 @@ class MarksVertices (VertexMarker gr) => Graph gr where
 
   isEmpty :: gr -> Bool
   empty :: gr
+  mkGraph :: [(Vertex, VertexLabel gr)] -> [Edge gr] -> gr
 
 class (Graph gr) => InspectableGraph gr where
   context :: gr -> Vertex -> Maybe (Context gr)
