@@ -26,6 +26,7 @@ library
                    Data.Graph.ImmutableDigraph,
                    Data.Graph.MutableDigraph,
                    Data.Graph.Algorithms.Basic,
+                   Data.Graph.Algorithms.Condense,
                    Data.Graph.Algorithms.DFS,
                    Data.Graph.Algorithms.Dominators,
                    Data.Graph.Marker.Dense,
