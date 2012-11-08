@@ -21,6 +21,9 @@ type SparseImmutableDigraph = ImmutableDigraph SparseMarker
 data ImmutableDigraph (k :: * -> *) a b =
   Gr { graphRepr :: IntMap (Context (ImmutableDigraph k a b)) }
 
+instance (Eq a, Eq b, Ord a, Ord b) => Eq (ImmutableDigraph k a b) where
+  (Gr g1) == (Gr g2) = g1 == g2
+
 instance (MarksVertices k) => Graph (ImmutableDigraph k n e) where
   type VertexLabel (ImmutableDigraph k n e) = n
   type EdgeLabel (ImmutableDigraph k n e) = e
@@ -51,3 +54,30 @@ instance (MarksVertices k) => VertexListGraph (ImmutableDigraph k n e) where
       toLabV vid (Context _ _ l _) acc = (vid, l) : acc
   vertices = IM.keys . graphRepr
   numVertices = IM.size . graphRepr
+
+instance (MarksVertices k) => IncidenceGraph (ImmutableDigraph k n e) where
+  out (Gr g) v = fromMaybe [] $ do
+    Context _ _ _ s <- IM.lookup v g
+    return $ map (\(tgt, elbl) -> Edge v tgt elbl) s
+
+instance (MarksVertices k) => BidirectionalGraph (ImmutableDigraph k n e) where
+  inn (Gr g) v = fromMaybe [] $ do
+    Context p _ _ _ <- IM.lookup v g
+    return $ map (\(src, elbl) -> Edge src v elbl) p
+
+instance (MarksVertices k) => AdjacencyGraph (ImmutableDigraph k n e) where
+  foldSuc f seed (Gr g) v = fromMaybe seed $ do
+    Context _ _ _ s <- IM.lookup v g
+    return $ foldl' (\acc (tgt, el) -> f tgt el acc) seed s
+
+instance (MarksVertices k) => BidirectionalAdjacencyGraph (ImmutableDigraph k n e) where
+  foldPre f seed (Gr g) v = fromMaybe seed $ do
+    Context p _ _ _ <- IM.lookup v g
+    return $ foldl' (\acc (tgt, el) -> f tgt el acc) seed p
+
+instance (MarksVertices k) => EdgeListGraph (ImmutableDigraph k n e) where
+  edges = IM.foldrWithKey' toEdges [] . graphRepr
+    where
+      toEdges src (Context _ _ _ s) acc =
+        foldl' (toEdge src) acc s
+      toEdge src acc (dst, lbl) = Edge src dst lbl : acc

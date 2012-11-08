@@ -101,13 +101,15 @@ instance (MarksVertices k) => MutableGraph (Gr k n e) where
 
   insertEdge src dst lbl (Gr g) = do
     Ctx sps slbl sss <- IM.lookup src g
-    Ctx dps dlbl dss <- IM.lookup dst g
+    -- If the edge already exists, don't insert it (this graph format
+    -- does not allow multi-edges).
     case IM.member dst sss of
       True -> Nothing
       False -> do
         let !sss' = IM.insert dst lbl sss
-            !dps' = IM.insert src lbl dps
             !g1 = IM.insert src (Ctx sps slbl sss') g
+        Ctx dps dlbl dss <- IM.lookup dst g1
+        let !dps' = IM.insert src lbl dps
             !g2 = IM.insert dst (Ctx dps' dlbl dss) g1
         return (Gr g2, Edge src dst lbl)
 

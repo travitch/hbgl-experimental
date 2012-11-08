@@ -123,23 +123,24 @@ xdffWith nextNodes f roots g
   | isEmpty g = []
   | otherwise = runST $ do
     m <- newMarker (numVertices g)
-    go m [] roots
+    go m roots
     where
-      go :: VertexMarker gr s -> [Tree c] -> [Vertex] -> ST s [Tree c]
-      go _ acc [] = return acc
-      go m acc (v:vs) = do
+      go :: VertexMarker gr s -> [Vertex] -> ST s [Tree c]
+      go _ [] = return [] -- acc
+      go m (v:vs) = do
         isM <- isVertexMarked m v
         case isM of
-          True -> go m acc vs
+          True -> go m vs
           False -> do
             markVertex m v
             case context g v of
-              Nothing -> go m acc vs
+              Nothing -> go m vs
               Just c -> do
                 let nxt = nextNodes c
                 nxt' <- filterM (fmap not . isVertexMarked m) nxt
-                ts <- go m acc nxt'
-                go m (T.Node (f c) ts : acc) vs
+                ts <- go m nxt'
+                ts' <- go m vs
+                return $ T.Node (f c) ts : ts'
 
 dffWith :: (InspectableGraph gr, VertexListGraph gr)
            => (Context gr -> c)

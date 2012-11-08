@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies, FlexibleContexts, UndecidableInstances #-}
 module Data.Graph.Interface (
   Vertex,
   Edge(..),
@@ -37,6 +37,7 @@ module Data.Graph.Interface (
 import Control.Monad.ST
 import qualified Data.Foldable as F
 import Data.Maybe ( fromMaybe, isJust )
+import qualified Data.Set as S
 
 type Vertex = Int
 
@@ -45,12 +46,20 @@ data Edge gr = Edge { edgeSource :: Vertex
                     , edgeLabel :: EdgeLabel gr
                     }
 
+instance Show (EdgeLabel gr) => Show (Edge gr) where
+  show (Edge s d lbl) = "Edge " ++ show s ++ " " ++ show d ++ " " ++ show lbl
+
 type Adj gr = [(Vertex, EdgeLabel gr)]
 data Context gr = Context { lpre' :: Adj gr
                           , vertex' :: Vertex
                           , lab' :: VertexLabel gr
                           , lsuc' :: Adj gr
                           }
+
+instance (Eq (VertexLabel gr), Eq (EdgeLabel gr), Ord (VertexLabel gr), Ord (EdgeLabel gr)) => Eq (Context gr) where
+  (Context ps1 n1 l1 ss1) == (Context ps2 n2 l2 ss2) =
+    n1 == n2 && l1 == l2 && S.fromList ps1 == S.fromList ps2 &&
+      S.fromList ss1 == S.fromList ss2
 
 class MarksVertices (k :: * -> *) where
   newMarker :: Int -> ST s (k s)
