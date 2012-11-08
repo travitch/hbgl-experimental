@@ -16,11 +16,13 @@ module Data.Graph.Interface (
   EdgeListGraph(..),
   MutableGraph(..),
   MarksVertices(..),
+  -- * Generic mutator
+  (&),
   -- * Graph traversals
   ufold,
-  -- gmap,
-  -- nmap,
-  -- emap,
+  gmap,
+  nmap,
+  emap,
   -- * Context inspection
   suc',
   pre',
@@ -29,9 +31,6 @@ module Data.Graph.Interface (
   outdeg',
   indeg',
   neighbors'
-  -- * FGL compatibility
-  -- toNodeTuple,
-  -- toEdgeTuple
   ) where
 
 import Control.Monad.ST
@@ -159,13 +158,6 @@ class (Graph gr) => EdgeListGraph gr where
 -- | Graphs with efficient implementations of adjacency tests.
 class (Graph gr) => AdjacencyMatrix gr where
   edgeExists :: gr -> Vertex -> Vertex -> [EdgeLabel gr]
-  -- edgeExists g e = do
-  --   c <- context g src
-  --   link <- F.find ((==dst) . fst) (F.toList (lsuc' c))
-  --   return (snd link)
-  --   where
-  --     src = edgeSource e
-  --     dst = edgeDest e
 
 -- | The singular variants have default implementations.  They are
 -- class members so that they can be overridden with more efficient
@@ -197,9 +189,8 @@ class (Graph gr) => MutableGraph gr where
   -- | Remove all edges with the given endpoints (regardless of label)
   removeEdges :: Vertex -> Vertex -> gr -> gr
 
---  removeEdgesWithLabel :: Vertex -> Vertex -> EdgeLabel gr -> gr -> gr
-
-
+(&) :: (MutableGraph gr) => Context gr -> gr -> gr
+(&) = undefined
 
 -- | Fold a function over all of the contexts of the graph
 ufold :: (VertexListGraph gr, InspectableGraph gr)
@@ -212,7 +203,7 @@ ufold f seed g = foldr f seed ctxts
     errMsg = "ufold: context lookup failure"
     errLookup = fromMaybe (error errMsg)
     ctxts = map (errLookup . context g) (vertices g)
-{-
+
 -- | Map a function over a graph.  The function can perform arbitrary
 -- modifications to each context (which are combined to form a new
 -- graph).
@@ -223,25 +214,23 @@ gmap :: (MutableGraph gr2, InspectableGraph gr1, VertexListGraph gr1)
 gmap f = ufold (\c -> (f c&)) empty
 
 -- | Map a function over the node labels of a graph
-nmap :: (Node gr1 ~ Node gr2, EdgeLabel gr1 ~ EdgeLabel gr2,
+nmap :: (EdgeLabel gr1 ~ EdgeLabel gr2,
          MutableGraph gr2, InspectableGraph gr1, VertexListGraph gr1)
-        => (NodeLabel gr1 -> NodeLabel gr2)
+        => (VertexLabel gr1 -> VertexLabel gr2)
         -> gr1
         -> gr2
-nmap f = gmap (\(Context p (LNode v l) s) -> Context p (LNode v (f l)) s)
+nmap f = gmap (\(Context p v l s) -> Context p v (f l) s)
 
 
 -- | Map a function over the edge labels of a graph
-emap :: (Node gr1 ~ Node gr2, NodeLabel gr1 ~ NodeLabel gr2,
+emap :: (VertexLabel gr1 ~ VertexLabel gr2,
          MutableGraph gr2, InspectableGraph gr1, VertexListGraph gr1)
         => (EdgeLabel gr1 -> EdgeLabel gr2)
         -> gr1
         -> gr2
-emap f = gmap (\(Context p (LNode v l) s) -> Context (adjMap f p) (LNode v l) (adjMap f s))
+emap f = gmap (\(Context p v l s) -> Context (adjMap f p) v l (adjMap f s))
   where
     adjMap g = map (\(v, l) -> (v, g l))
-
--}
 
 -- Context inspection
 
@@ -272,71 +261,3 @@ indeg' (Context p _ _ _) = length p
 -- successor.
 neighbors' :: (BidirectionalGraph gr) => Context gr -> [Vertex]
 neighbors' (Context p _ _ s) = map fst (p ++ s)
-
--- -- | Convert a labeled node to an fgl-compatible equivalent
--- toNodeTuple :: (Integral a, Node gr ~ a) => LNode gr -> (Int, NodeLabel gr)
--- toNodeTuple (LNode n l) = (fromIntegral n, l)
-
--- -- | Convert a labeled edge to an fgl-compatible equivalent
--- toEdgeTuple :: (Integral a, Node gr ~ a) => LEdge gr -> (Int, Int, EdgeLabel gr)
--- toEdgeTuple (LEdge (Edge src dst) l) = (fromIntegral src, fromIntegral dst, l)
-
-
-{-
--- | A labeled node in a graph
-data LNode gr = LNode { unlabelNode :: Node gr,
-                        nodeLabel :: NodeLabel gr
-                      }
-instance (Eq (Node gr), Eq (NodeLabel gr)) => Eq (LNode gr) where
-  (LNode n1 l1) == (LNode n2 l2) = n1 == n2 && l1 == l2
-instance (Ord (Node gr), Ord (NodeLabel gr)) => Ord (LNode gr) where
-  compare (LNode n1 l1) (LNode n2 l2) = compare (n1, l1) (n2, l2)
-instance (Show (Node gr), Show (NodeLabel gr)) => Show (LNode gr) where
-  show (LNode n l) = concat ["LNode ", show n, " ", show l]
-instance (Hashable (Node gr), Hashable (NodeLabel gr)) => Hashable (LNode gr) where
-  hash (LNode n l) = hash n `combine` hash l
-instance (NFData (Node gr), NFData (NodeLabel gr)) => NFData (LNode gr) where
-  rnf ln@(LNode n l) = n `deepseq` l `deepseq` ln `seq` ()
-
--- | A labeled edge in a graph
-data LEdge gr = LEdge { unlabelEdge :: Edge gr,
-                        edgeLabel :: EdgeLabel gr
-                      }
-instance (Eq (Edge gr), Eq (EdgeLabel gr)) => Eq (LEdge gr) where
-  (LEdge e1 l1) == (LEdge e2 l2) = e1 == e2 && l1 == l2
-instance (Ord (Edge gr), Ord (EdgeLabel gr)) => Ord (LEdge gr) where
-  compare (LEdge e1 l1) (LEdge e2 l2) = compare (e1, l1) (e2, l2)
-instance (Show (Edge gr), Show (EdgeLabel gr)) => Show (LEdge gr) where
-  show (LEdge e l) = concat ["LEdge ", show e, " ", show l]
-instance (Hashable (Edge gr), Hashable (EdgeLabel gr)) => Hashable (LEdge gr) where
-  hash (LEdge e l) = hash e `combine` hash l
-instance (NFData (Edge gr), NFData (EdgeLabel gr)) => NFData (LEdge gr) where
-  rnf le@(LEdge e l) = e `deepseq` l `deepseq` le `seq` ()
-
--- | An edge in a graph
-data Edge gr = Edge { edgeSource :: Node gr
-                    , edgeDest :: Node gr
-                    }
-instance (Eq (Node gr)) => Eq (Edge gr) where
-  (Edge s1 d1) == (Edge s2 d2) = s1 == s2 && d1 == d2
-instance (Ord (Node gr)) => Ord (Edge gr) where
-  compare (Edge s1 d1) (Edge s2 d2) = compare (s1, d1) (s2, d2)
-instance (Show (Node gr)) => Show (Edge gr) where
-  show (Edge s d) = concat ["Edge ", show s, " ", show d]
-instance (Hashable (Node gr)) => Hashable (Edge gr) where
-  hash (Edge s d) = hash s `combine` hash d
-instance (NFData (Node gr)) => NFData (Edge gr) where
-  rnf e@(Edge n1 n2) = n1 `deepseq` n2 `deepseq` e `seq` ()
-
-type Adj gr = [(Node gr, EdgeLabel gr)]
-
--- | Inductive graph contexts
-data Context gr = Context { contextIncomingLinks :: Adj gr
-                          , contextNode :: LNode gr
-                          , contextOutgoingLinks :: Adj gr
-                          }
-
-instance (Eq (NodeLabel gr), Eq (EdgeLabel gr), Eq (Node gr)) => Eq (Context gr) where
-  (Context ps1 ln1 ss1) == (Context ps2 ln2 ss2) =
-    ps1 == ps2 && ln1 == ln2 && ss1 == ss2
--}
