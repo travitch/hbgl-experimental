@@ -24,24 +24,12 @@ library
   ghc-prof-options: -auto-all
   exposed-modules: Data.Graph.Interface,
                    Data.Graph.ImmutableDigraph,
-                   Data.Graph.PatriciaTree,
+                   Data.Graph.MutableDigraph,
                    Data.Graph.Algorithms.Basic,
                    Data.Graph.Algorithms.DFS,
                    Data.Graph.Algorithms.Dominators,
                    Data.Graph.Marker.Dense,
                    Data.Graph.Marker.Sparse
-                   -- Data.Graph.Compact,
-                   -- Data.Graph.HAMT,
-                   -- Data.Graph.PatriciaTree,
-                   -- Data.Graph.LazyHAMT,
-                   -- Data.Graph.Algorithms.Basic,
-                   -- Data.Graph.Algorithms.Marking.DFS,
-                   -- Data.Graph.Algorithms.Marking.Dominators,
-                   -- Data.Graph.Algorithms.Matching.DFS,
-                   -- Data.Graph.Algorithms.Matching.Dominators,
-                   -- Data.Graph.Algorithms.Matching.SP
-  -- other-modules:
-  -- build-depends:
 
 -- executable TrivialGraphTest
 --   default-language: Haskell2010

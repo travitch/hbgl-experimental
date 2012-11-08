@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeFamilies, BangPatterns #-}
-module Data.Graph.PatriciaTree (
-  DenseVertexGraph,
-  SparseVertexGraph
+module Data.Graph.MutableDigraph (
+  DenseDigraph,
+  SparseDigraph
   ) where
 
 import Data.IntMap ( IntMap )
@@ -17,8 +17,10 @@ import Data.Graph.Marker.Sparse
 data Ctx (k :: * -> *) a b = Ctx !(IntMap b) a !(IntMap b)
 data Gr (k :: * -> *) a b = Gr { graphRepr :: IntMap (Ctx k a b) }
 
-type DenseVertexGraph = Gr DenseMarker
-type SparseVertexGraph = Gr SparseMarker
+-- | A digraph with densely-allocated vertex numbers
+type DenseDigraph = Gr DenseMarker
+-- | A digraph with sparse vertex numbers
+type SparseDigraph = Gr SparseMarker
 
 instance (MarksVertices k) => Graph (Gr k n e) where
   type VertexLabel (Gr k n e) = n

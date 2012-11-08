@@ -34,10 +34,8 @@ module Data.Graph.Interface (
   -- toEdgeTuple
   ) where
 
-import Control.DeepSeq
 import Control.Monad.ST
 import qualified Data.Foldable as F
-import Data.Hashable
 import Data.Maybe ( fromMaybe, isJust )
 
 type Vertex = Int

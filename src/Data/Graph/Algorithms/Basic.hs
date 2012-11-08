@@ -18,9 +18,9 @@ module Data.Graph.Algorithms.Basic (
   preorderF
   ) where
 
-import Data.List ( nub )
+--import Data.List ( nub )
 import Data.Tree
-import Data.Graph.Interface
+--import Data.Graph.Interface
 {-
 -- | Reverse the directions of all of the edges in the graph
 grev :: (MutableGraph gr, VertexListGraph gr) => gr -> gr
