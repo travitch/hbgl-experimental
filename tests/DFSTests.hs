@@ -10,8 +10,8 @@ import Test.QuickCheck
 
 import Data.Graph.Interface
 import qualified Data.Graph.Inductive as FGL
-import qualified Data.Graph.PatriciaTree as P
-import qualified Data.Graph.Algorithms.Matching.DFS as Match
+import qualified Data.Graph.ImmutableDigraph as MG
+import qualified Data.Graph.Algorithms.DFS as DFS
 
 import Text.Printf
 import Debug.Trace
@@ -41,7 +41,7 @@ main = defaultMain tests
 
 
 type FGLGraph = FGL.Gr () ()
-type TGraph = P.Gr () ()
+type TGraph = MG.DenseImmutableDigraph () ()
 
 data GraphPair = GP TGraph FGLGraph
 
@@ -51,7 +51,7 @@ instance Arbitrary GraphPair where
 instance Show GraphPair where
   show (GP g1 g2) =
     concat [ "TGraphNodes: "
-           , show (nodes g1)
+           , show (vertices g1)
            , "\n"
            , show (edges g1)
            , "\nCGraphNodes: "
@@ -76,40 +76,40 @@ instance Show NodeId where
 
 mkGraphPair :: Int -> Gen GraphPair
 mkGraphPair sz = do
-  let ns1 = map (\n -> LNode n ()) [0..sz]
+  let ns1 = zip [0..sz] (repeat ()) -- map (\n -> LNode n ()) [0..sz]
       ns2 = map (\n -> (n, ())) [0..sz]
   nEdges <- choose (2, 2 * sz)
   srcs <- replicateM nEdges (choose (0, sz))
   dsts <- replicateM nEdges (choose (0, sz))
-  let es1 = zipWith (\s d -> LEdge (Edge s d) ()) srcs dsts
+  let es1 = zipWith (\s d -> Edge s d ()) srcs dsts
       es2 = zipWith (\s d -> (s, d, ())) srcs dsts
   return $! GP (mkGraph ns1 es1) (FGL.mkGraph ns2 es2)
 
 prop_dfsSame :: (NodeId, GraphPair) -> Bool
 prop_dfsSame (NID nid, GP tg cg) =
-  sort (Match.dfs [nid] tg) == sort (FGL.dfs [nid] cg)
+  sort (DFS.dfs [nid] tg) == sort (FGL.dfs [nid] cg)
 
 prop_dfsPrimeSame :: GraphPair -> Bool
 prop_dfsPrimeSame (GP tg cg) =
-  sort (Match.dfs' tg) == sort (FGL.dfs' cg)
+  sort (DFS.dfs' tg) == sort (FGL.dfs' cg)
 
 prop_dffSame :: (NodeId, GraphPair) -> Bool
 prop_dffSame (NID nid, GP tg cg) =
-  let f1 = sort $ map flatten $ Match.dff [nid] tg
-      f2 = sort $ map flatten $ FGL.dff [nid] cg
+  let f1 = sort $ map (sort . flatten) $ DFS.dff [nid] tg
+      f2 = sort $ map (sort . flatten) $ FGL.dff [nid] cg
   in f1 == f2 `debug` printf "f1: %s\nf2: %s\n\n" (show f1) (show f2)
 --  sort (map flatten (Match.dff [nid] tg)) == sort (map flatten (FGL.dff [nid] cg))
 
 prop_dffPrimeSame :: GraphPair -> Bool
 prop_dffPrimeSame (GP tg cg) =
-  sort (map flatten (Match.dff' tg)) == sort (map flatten (FGL.dff' cg))
+  sort (map (sort . flatten) (DFS.dff' tg)) == sort (map (sort . flatten) (FGL.dff' cg))
 
 prop_equalNComponents :: GraphPair -> Bool
 prop_equalNComponents (GP tg cg) =
-  Match.noComponents tg == FGL.noComponents cg
+  DFS.noComponents tg == FGL.noComponents cg
 
 prop_equalComponents :: GraphPair -> Bool
 prop_equalComponents (GP tg cg) =
-  let c1 = sort (map sort (Match.components tg))
+  let c1 = sort (map sort (DFS.components tg))
       c2 = sort (map sort (FGL.components cg))
   in c1 == c2 -- `debug` printf "C1: %s\nC2: %s\n" (show c1) (show c2)
