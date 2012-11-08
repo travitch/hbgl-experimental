@@ -174,17 +174,16 @@ class (Graph gr) => AdjacencyMatrix gr where
 -- class members so that they can be overridden with more efficient
 -- implementations if desired.
 class (Graph gr) => MutableGraph gr where
-  -- | Insert an edge into the graph.  Both the source and destination
-  -- vertices of the edge must exist in the graph (otherwise the
-  -- function returns Nothing).  If the edge already exists in the
-  -- graph and the graph is not a multi graph, the function also
-  -- returns Nothing.  Exact behavior on duplicate edges is up to
-  -- the implementation?
-  insertEdge :: Vertex -> Vertex -> EdgeLabel gr -> gr -> Maybe (gr, Edge gr)
+  -- | Insert an edge into the graph.  Edges will be inserted only if
+  -- both of the endpoints are in the graph.  For graphs that do not
+  -- allow multi-edges, inserting an edge that already exists will
+  -- overwrite the edge label.  For multigraphs, a duplicate edge will
+  -- be inserted.
+  insertEdge :: Vertex -> Vertex -> EdgeLabel gr -> gr -> Maybe gr
 
-  -- | Add a vertex to the graph.  This function fails if the vertex
-  -- already exists in the graph.
-  insertVertex :: Vertex -> VertexLabel gr -> gr -> Maybe gr
+  -- | Add a vertex to the graph.  If the vertex already exists
+  -- in the graph, its label is overwritten.
+  insertVertex :: Vertex -> VertexLabel gr -> gr -> gr
 
   -- | Delete a node from the graph.
   removeVertex :: Vertex -> gr -> gr
@@ -200,8 +199,20 @@ class (Graph gr) => MutableGraph gr where
   -- | Remove all edges with the given endpoints (regardless of label)
   removeEdges :: Vertex -> Vertex -> gr -> gr
 
+-- FIXME Make this a package-private function.  It is kind of ugly.
+
+-- | This function is the merge operator from FGL.  It has some
+-- important invariants that /must/ be obeyed.  The vertex whose
+-- context is being inserted must /not/ be in the graph.
+-- Additionally, the other vertices referred to in the context /must/
+-- exist in the graph.
 (&) :: (MutableGraph gr) => Context gr -> gr -> gr
-(&) = undefined
+Context ps n l ss & g0 =
+  let g1 = insertVertex n l g0
+      addSucEdge (d, el) g = fromMaybe g (insertEdge n d el g)
+      addPreEdge (s, el) g = fromMaybe g (insertEdge s n el g)
+      g2 = foldr addSucEdge g1 ss
+  in foldr addPreEdge g2 ps
 
 -- | Fold a function over all of the contexts of the graph
 ufold :: (VertexListGraph gr, InspectableGraph gr)

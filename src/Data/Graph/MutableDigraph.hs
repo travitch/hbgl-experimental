@@ -31,8 +31,8 @@ instance (MarksVertices k) => Graph (Gr k n e) where
   isEmpty = IM.null . graphRepr
   mkGraph ns es = foldl' addEdge g0 es
     where
-      addVertex acc (v, lbl) = fromMaybe acc (insertVertex v lbl acc)
-      addEdge acc (Edge src dst lbl) = maybe acc fst (insertEdge src dst lbl acc)
+      addVertex acc (v, lbl) = insertVertex v lbl acc
+      addEdge acc (Edge src dst lbl) = fromMaybe acc (insertEdge src dst lbl acc)
       g0 = foldl' addVertex empty ns
 
 instance (MarksVertices k) => InspectableGraph (Gr k n e) where
@@ -96,22 +96,18 @@ instance (MarksVertices k) => AdjacencyMatrix (Gr k n e) where
 instance (MarksVertices k) => MutableGraph (Gr k n e) where
   insertVertex v lbl (Gr g) =
     case IM.lookup v g of
-      Nothing -> Just $ Gr (IM.insert v (Ctx mempty lbl mempty) g)
-      Just _ -> Nothing
+      Nothing -> Gr $ IM.insert v (Ctx mempty lbl mempty) g
+      Just (Ctx ps _ ss) -> Gr $ IM.insert v (Ctx ps lbl ss) g
 
+  -- If the edge already exists, overwrite the label
   insertEdge src dst lbl (Gr g) = do
     Ctx sps slbl sss <- IM.lookup src g
-    -- If the edge already exists, don't insert it (this graph format
-    -- does not allow multi-edges).
-    case IM.member dst sss of
-      True -> Nothing
-      False -> do
-        let !sss' = IM.insert dst lbl sss
-            !g1 = IM.insert src (Ctx sps slbl sss') g
-        Ctx dps dlbl dss <- IM.lookup dst g1
-        let !dps' = IM.insert src lbl dps
-            !g2 = IM.insert dst (Ctx dps' dlbl dss) g1
-        return (Gr g2, Edge src dst lbl)
+    let !sss' = IM.insert dst lbl sss
+        !g1 = IM.insert src (Ctx sps slbl sss') g
+    Ctx dps dlbl dss <- IM.lookup dst g1
+    let !dps' = IM.insert src lbl dps
+        !g2 = IM.insert dst (Ctx dps' dlbl dss) g1
+    return (Gr g2) -- , Edge src dst lbl)
 
   removeVertex vid g =
     let Gr g1 = clearVertex vid g
