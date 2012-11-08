@@ -35,6 +35,7 @@ module Data.Graph.Interface (
 
 import Control.Monad.ST
 import qualified Data.Foldable as F
+import Data.Hashable
 import Data.Maybe ( fromMaybe, isJust )
 import qualified Data.Set as S
 
@@ -47,6 +48,16 @@ data Edge gr = Edge { edgeSource :: Vertex
 
 instance Show (EdgeLabel gr) => Show (Edge gr) where
   show (Edge s d lbl) = "Edge " ++ show s ++ " " ++ show d ++ " " ++ show lbl
+
+instance (Eq (EdgeLabel gr)) => Eq (Edge gr) where
+  (Edge s1 d1 l1) == (Edge s2 d2 l2) = s1 == s2 && d1 == d2 && l1 == l2
+
+instance (Ord (EdgeLabel gr)) => Ord (Edge gr) where
+  compare (Edge s1 d1 l1) (Edge s2 d2 l2) =
+    compare (s1, d1, l1) (s2, d2, l2)
+
+instance (Hashable (EdgeLabel gr)) => Hashable (Edge gr) where
+  hash (Edge s1 d1 l1) = s1 `combine` d1 `combine` hash l1
 
 type Adj gr = [(Vertex, EdgeLabel gr)]
 data Context gr = Context { lpre' :: Adj gr
