@@ -8,7 +8,8 @@ import Data.Graph.Interface
 data SparseMarker s = SparseMarker (HashTable s Vertex ())
 
 instance MarksVertices SparseMarker where
-  newMarker nElems = do
+  newMarker g = do
+    let nElems = numVertices g
     t <- HT.newSized (2 * nElems)
     return $ SparseMarker t
 

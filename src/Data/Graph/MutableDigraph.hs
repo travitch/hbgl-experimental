@@ -17,6 +17,13 @@ import Data.Graph.Marker.Sparse
 data Ctx (k :: * -> *) a b = Ctx !(IntMap b) a !(IntMap b)
 data Gr (k :: * -> *) a b = Gr { graphRepr :: IntMap (Ctx k a b) }
 
+instance (Eq a, Eq b) => Eq (Ctx k a b) where
+  (Ctx ps1 l1 ss1) == (Ctx ps2 l2 ss2) =
+    l1 == l2 && ps1 == ps2 && ss1 == ss2
+
+instance (Eq a, Eq b) => Eq (Gr k a b) where
+  (Gr m1) == (Gr m2) = m1 == m2
+
 -- | A digraph with densely-allocated vertex numbers
 type DenseDigraph = Gr DenseMarker
 -- | A digraph with sparse vertex numbers
@@ -34,6 +41,7 @@ instance (MarksVertices k) => Graph (Gr k n e) where
       addVertex acc (v, lbl) = insertVertex v lbl acc
       addEdge acc (Edge src dst lbl) = fromMaybe acc (insertEdge src dst lbl acc)
       g0 = foldl' addVertex empty ns
+  maxVertex = fst . IM.findMax . graphRepr
 
 instance (MarksVertices k) => InspectableGraph (Gr k n e) where
   context (Gr g) v = do

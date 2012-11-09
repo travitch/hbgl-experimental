@@ -11,7 +11,7 @@ import qualified Data.Set as S
 import Data.Graph.Interface
 import Data.Graph.Algorithms.DFS ( scc )
 
-condense :: (InspectableGraph gr1, BidirectionalGraph gr1,
+condense :: (DecomposableGraph gr1, BidirectionalGraph gr1,
              EdgeListGraph gr1, VertexListGraph gr1,
              Graph gr2, EdgeLabel gr2 ~ (),
              VertexLabel gr2 ~ [(Vertex, VertexLabel gr1)],

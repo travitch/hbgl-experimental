@@ -10,7 +10,7 @@ import Test.QuickCheck
 
 import Data.Graph.Interface
 import qualified Data.Graph.Inductive as FGL
-import qualified Data.Graph.ImmutableDigraph as MG
+import qualified Data.Graph.MutableDigraph as MG
 import qualified Data.Graph.Algorithms.DFS as DFS
 
 import Text.Printf
@@ -41,7 +41,7 @@ main = defaultMain tests
 
 
 type FGLGraph = FGL.Gr () ()
-type TGraph = MG.DenseImmutableDigraph () ()
+type TGraph = MG.DenseDigraph () ()
 
 data GraphPair = GP TGraph FGLGraph
 

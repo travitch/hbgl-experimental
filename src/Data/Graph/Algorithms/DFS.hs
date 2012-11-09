@@ -1,4 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 module Data.Graph.Algorithms.DFS (
   -- * Depth-first search
   xdfsWith,
@@ -31,8 +30,8 @@ module Data.Graph.Algorithms.DFS (
   reachable
   ) where
 
-import Control.Monad ( filterM )
-import Control.Monad.ST
+-- import Control.Monad ( filterM, foldM )
+-- import Control.Monad.ST
 import Data.Tree ( Tree )
 import qualified Data.Tree as T
 
@@ -47,147 +46,126 @@ import Data.Graph.Algorithms.Basic
 -- implementation (same marking options) that stores Contexts directly
 -- so that they can be provided with zero-allocations here
 
-xdfsWith :: forall gr c . (InspectableGraph gr, VertexListGraph gr)
+xdfsWith :: (DecomposableGraph gr)
             => (Context gr -> [Vertex])
             -> (Context gr -> c)
             -> [Vertex]
             -> gr
             -> [c]
-xdfsWith nextNodes f roots g
-  | isEmpty g = []
+xdfsWith nextNodes f roots g0
+  | isEmpty g0 = []
   | null roots = []
-  | otherwise = runST $ do
-    m <- newMarker (numVertices g)
-    go m [] roots
-    where
-      go :: VertexMarker gr s -> [c] -> [Vertex] -> ST s [c]
-      go _ acc [] = return acc
-      go m acc (v:vs) = do
-        isM <- isVertexMarked m v
-        case isM of
-          True -> go m acc vs
-          False -> do
-            markVertex m v
-            case context g v of
-              Nothing -> go m acc vs
-              Just c -> do
-                let nxt = nextNodes c
-                nxt' <- filterM (fmap not . isVertexMarked m) nxt
-                go m (f c : acc) (nxt' ++ vs)
+  | otherwise = go roots g0
+  where
+    go [] _ = []
+    go (v:vs) g =
+      case match v g of
+        Nothing -> go vs g
+        Just (c, g') -> f c : go (nextNodes c ++ vs) g'
 
-dfsWith :: (InspectableGraph gr, VertexListGraph gr)
+dfsWith :: (DecomposableGraph gr)
            => (Context gr -> c)
            -> [Vertex]
            -> gr
            -> [c]
 dfsWith = xdfsWith suc'
 
-dfsWith' :: (InspectableGraph gr, VertexListGraph gr)
+dfsWith' :: (DecomposableGraph gr, VertexListGraph gr)
             => (Context gr -> c)
             -> gr
             -> [c]
 dfsWith' f = fixVertices (dfsWith f)
 
-dfs :: (InspectableGraph gr, VertexListGraph gr)
+dfs :: (DecomposableGraph gr)
        => [Vertex] -> gr -> [Vertex]
 dfs = dfsWith vertex'
 
-dfs' :: (InspectableGraph gr, VertexListGraph gr)
+dfs' :: (DecomposableGraph gr, VertexListGraph gr)
        => gr -> [Vertex]
 dfs' = dfsWith' vertex'
 
-udfs :: (InspectableGraph gr, BidirectionalGraph gr, VertexListGraph gr)
+udfs :: (DecomposableGraph gr, BidirectionalGraph gr)
         => [Vertex] -> gr -> [Vertex]
 udfs = xdfsWith neighbors' vertex'
 
-udfs' :: (InspectableGraph gr, BidirectionalGraph gr, VertexListGraph gr)
+udfs' :: (DecomposableGraph gr, BidirectionalGraph gr, VertexListGraph gr)
         => gr -> [Vertex]
 udfs' = fixVertices udfs
 
-rdfs :: (InspectableGraph gr, BidirectionalGraph gr, VertexListGraph gr)
+rdfs :: (DecomposableGraph gr, BidirectionalGraph gr)
         => [Vertex] -> gr -> [Vertex]
 rdfs = xdfsWith pre' vertex'
 
-rdfs' :: (InspectableGraph gr, BidirectionalGraph gr, VertexListGraph gr)
+rdfs' :: (DecomposableGraph gr, BidirectionalGraph gr, VertexListGraph gr)
         => gr -> [Vertex]
 rdfs' = fixVertices rdfs
 
-xdffWith :: forall gr c . (InspectableGraph gr, VertexListGraph gr)
+xdffWith :: (DecomposableGraph gr)
            => (Context gr -> [Vertex])
            -> (Context gr -> c)
            -> [Vertex]
            -> gr
            -> [Tree c]
-xdffWith nextNodes f roots g
+xdffWith nextNodes f roots g0
   | null roots = []
-  | isEmpty g = []
-  | otherwise = runST $ do
-    m <- newMarker (numVertices g)
-    go m roots
-    where
-      go :: VertexMarker gr s -> [Vertex] -> ST s [Tree c]
-      go _ [] = return [] -- acc
-      go m (v:vs) = do
-        isM <- isVertexMarked m v
-        case isM of
-          True -> go m vs
-          False -> do
-            markVertex m v
-            case context g v of
-              Nothing -> go m vs
-              Just c -> do
-                let nxt = nextNodes c
-                nxt' <- filterM (fmap not . isVertexMarked m) nxt
-                ts <- go m nxt'
-                ts' <- go m vs
-                return $ T.Node (f c) ts : ts'
+  | isEmpty g0 = []
+  | otherwise = fst $ go roots g0
+  where
+    go [] g = ([], g)
+    go (v:vs) g =
+      case match v g of
+        Nothing -> go vs g
+        Just (c, g1) ->
+          let (ts, g2) = go (nextNodes c) g1
+              (ts', g3) = go vs g2
+          in (T.Node (f c) ts : ts', g3)
 
-dffWith :: (InspectableGraph gr, VertexListGraph gr)
+dffWith :: (DecomposableGraph gr)
            => (Context gr -> c)
            -> [Vertex]
            -> gr
            -> [Tree c]
 dffWith = xdffWith suc'
 
-dffWith' :: (InspectableGraph gr, VertexListGraph gr)
+dffWith' :: (DecomposableGraph gr, VertexListGraph gr)
             => (Context gr -> c)
             -> gr
             -> [Tree c]
 dffWith' f = fixVertices (dffWith f)
 
-dff :: (InspectableGraph gr, VertexListGraph gr)
+dff :: (DecomposableGraph gr)
        => [Vertex] -> gr -> [Tree Vertex]
 dff = dffWith vertex'
 
-dff' ::(InspectableGraph gr, VertexListGraph gr)
+dff' ::(DecomposableGraph gr, VertexListGraph gr)
        => gr -> [Tree Vertex]
 dff' = dffWith' vertex'
 
-udff :: (InspectableGraph gr, BidirectionalGraph gr, VertexListGraph gr)
+udff :: (DecomposableGraph gr, BidirectionalGraph gr)
         => [Vertex] -> gr -> [Tree Vertex]
 udff = xdffWith neighbors' vertex'
 
-udff' :: (InspectableGraph gr, BidirectionalGraph gr, VertexListGraph gr)
+udff' :: (DecomposableGraph gr, BidirectionalGraph gr, VertexListGraph gr)
         => gr -> [Tree Vertex]
 udff' = fixVertices udff
 
-rdff :: (InspectableGraph gr, BidirectionalGraph gr, VertexListGraph gr)
+rdff :: (DecomposableGraph gr, BidirectionalGraph gr)
         => [Vertex] -> gr -> [Tree Vertex]
 rdff = xdffWith pre' vertex'
 
-rdff' :: (InspectableGraph gr, BidirectionalGraph gr, VertexListGraph gr)
+rdff' :: (DecomposableGraph gr, BidirectionalGraph gr, VertexListGraph gr)
         => gr -> [Tree Vertex]
 rdff' = fixVertices rdff
 
-components :: (InspectableGraph gr, VertexListGraph gr, BidirectionalGraph gr)
+components :: (DecomposableGraph gr, BidirectionalGraph gr, VertexListGraph gr)
               => gr -> [[Vertex]]
 components = (map preorder) . udff'
 
-noComponents :: (InspectableGraph gr, VertexListGraph gr, BidirectionalGraph gr)
+noComponents :: (DecomposableGraph gr, BidirectionalGraph gr, VertexListGraph gr)
                 => gr -> Int
 noComponents = length . components
 
-isConnected :: (InspectableGraph gr, VertexListGraph gr, BidirectionalGraph gr)
+isConnected :: (DecomposableGraph gr, BidirectionalGraph gr, VertexListGraph gr)
                => gr -> Bool
 isConnected = (==1) . noComponents
 
@@ -197,19 +175,19 @@ postflatten (T.Node v ts) = postflattenF ts ++ [v]
 postflattenF :: [Tree a] -> [a]
 postflattenF = concatMap postflatten
 
-topsort :: (InspectableGraph gr, VertexListGraph gr)
+topsort :: (DecomposableGraph gr, VertexListGraph gr)
            => gr -> [Vertex]
 topsort = reverse . postflattenF . dff'
 
-topsort' :: (InspectableGraph gr, VertexListGraph gr)
+topsort' :: (DecomposableGraph gr, VertexListGraph gr)
             => gr -> [VertexLabel gr]
 topsort' = reverse . postorderF . dffWith' lab'
 
-scc :: (InspectableGraph gr, VertexListGraph gr, BidirectionalGraph gr)
+scc :: (DecomposableGraph gr, BidirectionalGraph gr, VertexListGraph gr)
        => gr -> [[Vertex]]
 scc g = map preorder (rdff (topsort g) g)
 
-reachable :: (InspectableGraph gr, VertexListGraph gr)
+reachable :: (DecomposableGraph gr)
              => Vertex -> gr -> [Vertex]
 reachable v g = preorderF (dff [v] g)
 

@@ -14,6 +14,7 @@ import Test.QuickCheck
 import Data.Graph.Interface
 import Data.Graph.MutableDigraph
 import Data.Graph.Algorithms.DFS
+import Data.Graph.Algorithms.Condense
 
 main :: IO ()
 main = defaultMain tests
@@ -32,7 +33,7 @@ main = defaultMain tests
              , testProperty "prop_insEdgeUpdatesSelfPre" prop_insEdgeUpdatesSelfPre
              ]
     ctests = [ testCase "scc1" test_scc1
---             , testCase "condense1" test_condense1
+             , testCase "condense1" test_condense1
              ]
 
 type SG = SparseDigraph () ()
@@ -94,27 +95,27 @@ prop_matchRemovesNodeRefs (NID n, g) =
 -- passing test here and in the UpdatesPre test
 prop_insEdgeUpdatesSuc :: (NodeId, NodeId, SG) -> Bool
 prop_insEdgeUpdatesSuc (NID s, NID d, g) = fromMaybe True $ do
-  (g', _) <- insertEdge s d () g
+  g' <- insertEdge s d () g
   return $ d `elem` suc g' s
 
 prop_insEdgeUpdatesPre :: (NodeId, NodeId, SG) -> Bool
 prop_insEdgeUpdatesPre (NID s, NID d, g) = fromMaybe True $ do
-  (g', _) <- insertEdge s d () g
+  g' <- insertEdge s d () g
   return $ s `elem` pre g' d
 
 prop_insEdgeUpdatesSelfSuc :: (NodeId, SG) -> Bool
 prop_insEdgeUpdatesSelfSuc (NID d, g) = fromMaybe True $ do
-  (g', _) <- insertEdge d d () g
+  g' <- insertEdge d d () g
   return $ d `elem` suc g' d
 
 prop_insEdgeUpdatesSelfPre :: (NodeId, SG) -> Bool
 prop_insEdgeUpdatesSelfPre (NID d, g) = fromMaybe True $ do
-  (g', _) <- insertEdge d d () g
+  g' <- insertEdge d d () g
   return $ d `elem` pre g' d
 
 prop_insNodeWorks :: (NodeId, SG) -> Bool
 prop_insNodeWorks (NID n, g) =
-  let Just g' = insertVertex (n+100) () g
+  let g' = insertVertex (n+100) () g
   in gelem (n + 100) g'
 
 cg1 :: SG
@@ -131,11 +132,11 @@ test_scc1 = do
                             ]
   assertEqual "test_scc1" expected comps
 
--- test_condense1 :: Assertion
--- test_condense1 = do
---   let cg :: Gr [LNode SG] ()
---       cg = condense cg1
---       ordGroups = topsort' cg
---       comps = foldl' (\acc ns -> S.fromList (map unlabelNode ns) : acc) [] ordGroups
---       expected = [S.fromList [4,3], S.fromList [5], S.fromList [1,2]]
---   assertEqual "test_condense1" expected comps
+test_condense1 :: Assertion
+test_condense1 = do
+  let cg :: SparseDigraph [(Vertex, VertexLabel SG)] () --  [LNode SG] ()
+      cg = condense cg1
+      ordGroups = topsort' cg
+      comps = foldl' (\acc ns -> S.fromList (map fst ns) : acc) [] ordGroups
+      expected = [S.fromList [4,3], S.fromList [5], S.fromList [1,2]]
+  assertEqual "test_condense1" expected comps

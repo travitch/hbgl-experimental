@@ -44,6 +44,7 @@ instance (MarksVertices k) => Graph (ImmutableDigraph k n e) where
         let c'' = Context ((src, lbl) : dps) dv dvlbl dss
             acc'' = IM.insert tgt c'' acc'
         return acc''
+  maxVertex = fst . IM.findMax . graphRepr
 
 instance (MarksVertices k) => InspectableGraph (ImmutableDigraph k n e) where
   context (Gr g) v = IM.lookup v g

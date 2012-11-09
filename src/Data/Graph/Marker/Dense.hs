@@ -13,8 +13,9 @@ bitsPerWord :: Int
 bitsPerWord = bitSize (undefined :: Word64)
 
 instance MarksVertices DenseMarker where
-  newMarker nElems = do
-    let nWords = (nElems `div` bitsPerWord) + 1
+  newMarker g = do
+    let nElems = maxVertex g
+        nWords = (nElems `div` bitsPerWord) + 1
     v <- V.replicate nWords 0
     return $ DenseMarker v
 

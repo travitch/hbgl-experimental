@@ -72,7 +72,7 @@ instance (Eq (VertexLabel gr), Eq (EdgeLabel gr), Ord (VertexLabel gr), Ord (Edg
       S.fromList ss1 == S.fromList ss2
 
 class MarksVertices (k :: * -> *) where
-  newMarker :: Int -> ST s (k s)
+  newMarker :: (VertexListGraph gr) => gr -> ST s (k s)
   markVertex :: k s -> Vertex -> ST s ()
   isVertexMarked :: k s -> Vertex -> ST s Bool
 
@@ -84,6 +84,7 @@ class MarksVertices (VertexMarker gr) => Graph gr where
   isEmpty :: gr -> Bool
   empty :: gr
   mkGraph :: [(Vertex, VertexLabel gr)] -> [Edge gr] -> gr
+  maxVertex :: gr -> Vertex
 
 class (Graph gr) => InspectableGraph gr where
   context :: gr -> Vertex -> Maybe (Context gr)

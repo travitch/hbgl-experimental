@@ -2,7 +2,7 @@
 module Data.Graph.Algorithms.Dominators ( dom, iDom ) where
 
 import Data.Graph.Interface
-import Data.Graph.Algorithms.DFS
+import Data.Graph.Algorithms.DFS ( dff )
 
 import Data.Tree ( Tree(..) )
 import qualified Data.Tree as T
@@ -11,7 +11,7 @@ import Data.List ( foldl' )
 import Data.Map ( Map )
 import qualified Data.Map as M
 
-iDom :: (VertexListGraph gr, BidirectionalAdjacencyGraph gr)
+iDom :: (DecomposableGraph gr, VertexListGraph gr, BidirectionalAdjacencyGraph gr)
         => gr -> Vertex -> Maybe [(Vertex, Vertex)]
 iDom g root = do
   (result, toNode, _) <- idomWork g root
@@ -19,7 +19,7 @@ iDom g root = do
   return $ map toResult (assocs result)
 
 
-dom :: (VertexListGraph gr, BidirectionalAdjacencyGraph gr)
+dom :: (DecomposableGraph gr, VertexListGraph gr, BidirectionalAdjacencyGraph gr)
         => gr -> Vertex -> Maybe [(Vertex, [Vertex])]
 dom g root = do
   (idoms, toNode, fromNode) <- idomWork g root
@@ -38,7 +38,7 @@ type Preds = Array Node' [Node']
 type ToNode = Array Node' Vertex
 type FromNode = Map Vertex Node'
 
-idomWork :: (VertexListGraph gr, BidirectionalAdjacencyGraph gr)
+idomWork :: (DecomposableGraph gr, VertexListGraph gr, BidirectionalAdjacencyGraph gr)
             => gr -> Vertex -> Maybe (IDom, ToNode, FromNode)
 idomWork g root
   | null trees = Nothing
