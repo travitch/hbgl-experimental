@@ -169,7 +169,8 @@ class (Graph gr) => EdgeListGraph gr where
 
 -- | Graphs with efficient implementations of adjacency tests.
 class (Graph gr) => AdjacencyMatrix gr where
-  edgeExists :: gr -> Vertex -> Vertex -> [EdgeLabel gr]
+  edgesBetween :: gr -> Vertex -> Vertex -> [EdgeLabel gr]
+  edgeExists :: gr -> Vertex -> Vertex -> Bool
 
 -- | The singular variants have default implementations.  They are
 -- class members so that they can be overridden with more efficient

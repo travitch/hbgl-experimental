@@ -95,11 +95,17 @@ instance (MarksVertices k) => EdgeListGraph (Gr k n e) where
       toEdge src dst lbl acc = Edge src dst lbl : acc
 
 instance (MarksVertices k) => AdjacencyMatrix (Gr k n e) where
-  edgeExists (Gr g) src dst =
+  edgesBetween (Gr g) src dst =
     fromMaybe [] $ do
       Ctx _ _ ss <- IM.lookup src g
       lbl <- IM.lookup dst ss
       return [lbl]
+
+  edgeExists (Gr g) src dst =
+    case IM.lookup src g of
+      Nothing -> False
+      Just (Ctx _ _ ss) ->
+        IM.member dst ss
 
 instance (MarksVertices k) => MutableGraph (Gr k n e) where
   insertVertex v lbl (Gr g) =
