@@ -171,6 +171,7 @@ class (Graph gr) => EdgeListGraph gr where
 class (Graph gr) => AdjacencyMatrix gr where
   edgesBetween :: gr -> Vertex -> Vertex -> [EdgeLabel gr]
   edgeExists :: gr -> Vertex -> Vertex -> Bool
+  edgeExists g v1 v2 = null (edgesBetween g v1 v2)
 
 -- | The singular variants have default implementations.  They are
 -- class members so that they can be overridden with more efficient
