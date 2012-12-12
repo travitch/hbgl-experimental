@@ -1,3 +1,4 @@
+{-# LANGUAGE RankNTypes, ScopedTypeVariables #-}
 module Data.Graph.Algorithms.DFS (
   -- * Depth-first search
   xdfsWith,
@@ -30,8 +31,8 @@ module Data.Graph.Algorithms.DFS (
   reachable
   ) where
 
--- import Control.Monad ( filterM, foldM )
--- import Control.Monad.ST
+import Control.Monad ( foldM )
+import Control.Monad.ST
 import Data.Tree ( Tree )
 import qualified Data.Tree as T
 
@@ -46,57 +47,65 @@ import Data.Graph.Algorithms.Basic
 -- implementation (same marking options) that stores Contexts directly
 -- so that they can be provided with zero-allocations here
 
-xdfsWith :: (DecomposableGraph gr)
+xdfsWith :: forall gr c . (InspectableGraph gr, VertexListGraph gr)
             => (Context gr -> [Vertex])
             -> (Context gr -> c)
             -> [Vertex]
             -> gr
             -> [c]
-xdfsWith nextNodes f roots g0
-  | isEmpty g0 = []
+xdfsWith nextNodes f roots g
+  | isEmpty g = []
   | null roots = []
-  | otherwise = go roots g0
-  where
-    go [] _ = []
-    go (v:vs) g =
-      case match v g of
-        Nothing -> go vs g
-        Just (c, g') -> f c : go (nextNodes c ++ vs) g'
+  | otherwise = runST $ do
+    m <- newMarker g
+    res <- foldM (go m) [] roots
+    return $ reverse res
+    where
+      go :: VertexMarker gr s -> [c] -> Vertex -> ST s [c]
+      go m acc v = do
+        isM <- isVertexMarked m v
+        case isM of
+          True -> return acc
+          False -> do
+            markVertex m v
+            case context g v of
+              Nothing -> return acc
+              Just c -> foldM (go m) (f c : acc) (nextNodes c)
 
-dfsWith :: (DecomposableGraph gr)
+dfsWith :: (VertexListGraph gr, InspectableGraph gr)
            => (Context gr -> c)
            -> [Vertex]
            -> gr
            -> [c]
 dfsWith = xdfsWith suc'
 
-dfsWith' :: (DecomposableGraph gr, VertexListGraph gr)
+dfsWith' :: (VertexListGraph gr, InspectableGraph gr)
             => (Context gr -> c)
             -> gr
             -> [c]
 dfsWith' f = fixVertices (dfsWith f)
 
-dfs :: (DecomposableGraph gr)
+dfs :: (VertexListGraph gr, InspectableGraph gr)
        => [Vertex] -> gr -> [Vertex]
 dfs = dfsWith vertex'
 
-dfs' :: (DecomposableGraph gr, VertexListGraph gr)
+dfs' :: (VertexListGraph gr, InspectableGraph gr)
        => gr -> [Vertex]
 dfs' = dfsWith' vertex'
 
-udfs :: (DecomposableGraph gr, BidirectionalGraph gr)
+udfs :: (VertexListGraph gr, BidirectionalGraph gr, InspectableGraph gr)
         => [Vertex] -> gr -> [Vertex]
 udfs = xdfsWith neighbors' vertex'
 
-udfs' :: (DecomposableGraph gr, BidirectionalGraph gr, VertexListGraph gr)
+udfs' :: (VertexListGraph gr, BidirectionalGraph gr, InspectableGraph gr)
         => gr -> [Vertex]
 udfs' = fixVertices udfs
 
-rdfs :: (DecomposableGraph gr, BidirectionalGraph gr)
+rdfs :: (VertexListGraph gr, BidirectionalGraph gr, InspectableGraph gr)
         => [Vertex] -> gr -> [Vertex]
 rdfs = xdfsWith pre' vertex'
 
-rdfs' :: (DecomposableGraph gr, BidirectionalGraph gr, VertexListGraph gr)
+rdfs' :: (BidirectionalGraph gr, VertexListGraph gr, InspectableGraph gr)
         => gr -> [Vertex]
 rdfs' = fixVertices rdfs
 
