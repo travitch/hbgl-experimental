@@ -57,7 +57,8 @@ instance (Ord (EdgeLabel gr)) => Ord (Edge gr) where
     compare (s1, d1, l1) (s2, d2, l2)
 
 instance (Hashable (EdgeLabel gr)) => Hashable (Edge gr) where
-  hash (Edge s1 d1 l1) = s1 `combine` d1 `combine` hash l1
+  hashWithSalt s (Edge s1 d1 l1) =
+    s `hashWithSalt` s1 `hashWithSalt` d1 `hashWithSalt` l1
 
 type Adj gr = [(Vertex, EdgeLabel gr)]
 data Context gr = Context { lpre' :: Adj gr
@@ -123,6 +124,11 @@ class (IncidenceGraph gr) => BidirectionalGraph gr where
   inDeg g = length . inn g
   degree :: gr -> Vertex -> Int
   degree g n = outDeg g n + inDeg g n
+
+-- FIXME: For suc/pre, return a proxy object that is an instance of
+-- Foldable and Traversable.  This should be a small wrapper with just
+-- enough information.  Then an in-place fold is simple, and getting
+-- a list would just be F.toList
 
 -- | Graphs with efficient access to successor nodes.  Minimum
 -- required implementation: InspectableGraph
