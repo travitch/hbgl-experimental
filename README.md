@@ -1,3 +1,11 @@
+# Notice
+
+I consider this library deprecated in favor of
+[haggle](https://github.com/travitch/haggle), which is more efficient
+and has better documentation.
+
+# Introduction
+
 This library is an attempt at revising (and documenting) the classic
 functional graph library (fgl) for Haskell.  The main contributions
 over fgl are:
