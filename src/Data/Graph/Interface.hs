@@ -1,4 +1,5 @@
-{-# LANGUAGE TypeFamilies, FlexibleContexts, UndecidableInstances #-}
+{-# LANGUAGE TypeFamilies, FlexibleContexts, UndecidableInstances,
+   ConstrainedClassMethods #-}
 module Data.Graph.Interface (
   Vertex,
   Edge(..),
